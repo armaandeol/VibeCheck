@@ -36,3 +36,7 @@ VibeCheck is a 1-tap music experience that detects your current location and wea
 | AI          | LLM (for mood analysis) |
 
 ---
+
+
+![image](https://github.com/user-attachments/assets/ffdf99d2-ba17-4746-aa39-8d482b5b9e15)
+
