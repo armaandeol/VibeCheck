@@ -1,12 +1,38 @@
-# React + Vite
+# 🎧 VibeCheck
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Every moment deserves its soundtrack.**  
+VibeCheck is a 1-tap music experience that detects your current location and weather, analyzes the mood using AI, and generates a Spotify playlist that perfectly matches your vibe.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🚀 Features
 
-## Expanding the ESLint configuration
+- 🌍 Auto-detects your location (Geolocation API)
+- ☁️ Fetches real-time weather data (OpenWeatherMap API)
+- 🧠 Uses a Large Language Model (LLM) to analyze mood
+- 🎵 Generates Spotify playlists using Spotify Web API
+- 🛠 Built with React, TailwindCSS, and Supabase
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+---
+
+## 🧠 How It Works
+
+1. User taps **“VIBE CHECK”**
+2. **Geolocation API** fetches location
+3. **OpenWeatherMap API** gets real-time weather
+4. **LLM** interprets mood from environment
+5. **Spotify Web API** plays a curated playlist
+6. Your surroundings are turned into music — instantly
+
+---
+
+## 🛠 Tech Stack
+
+| Layer       | Tech Used               |
+|-------------|-------------------------|
+| Frontend    | React, TailwindCSS      |
+| Backend     | Supabase                |
+| APIs        | Geolocation, OpenWeatherMap, Spotify Web API |
+| AI          | LLM (for mood analysis) |
+
+---
