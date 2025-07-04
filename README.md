@@ -37,6 +37,10 @@ VibeCheck is a 1-tap music experience that detects your current location and wea
 
 ---
 
+## 📸 Screenshots
 
-![image](https://github.com/user-attachments/assets/ffdf99d2-ba17-4746-aa39-8d482b5b9e15)
-
+![image](https://github.com/user-attachments/assets/40d00391-f6cc-429b-97c9-6e301ec26dfc)
+![image](https://github.com/user-attachments/assets/59104122-c61e-41fd-a552-a4a1aa137b6a)
+![image](https://github.com/user-attachments/assets/ab4f2f9f-ac51-4d4b-9d52-02513f090006)
+![image](https://github.com/user-attachments/assets/911634ba-e4e1-4636-8cc1-503840d1fdd9)
+![image](https://github.com/user-attachments/assets/af57c69b-b3f6-4d4d-a82d-9ca182f0a1cd)
