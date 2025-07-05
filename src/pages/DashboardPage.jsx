@@ -70,14 +70,14 @@ const DashboardPage = () => {
 
         {/* CTA Section */}
         <SpotifySection className="text-center card-gradient p-12 max-w-4xl mx-auto">
-          <h2 className="text-4xl font-bold text-white mb-6">
-            Ready to Discover Your Perfect Vibe?
-          </h2>
-          <p className="text-xl text-gray-300 mb-8">
-            Join thousands of music lovers who are already creating amazing playlists and connecting through music.
-          </p>
+            <h2 className="text-4xl font-bold text-white mb-6">
+              Ready to Discover Your Perfect Vibe?
+            </h2>
+            <p className="text-xl text-gray-300 mb-8">
+              Join thousands of music lovers who are already creating amazing playlists and connecting through music.
+            </p>
           <SpotifyButton as={Link} to="/login" className="text-xl px-10 py-4">
-            Start Your Musical Journey
+              Start Your Musical Journey
           </SpotifyButton>
         </SpotifySection>
       </div>
