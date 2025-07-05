@@ -53,83 +53,130 @@ const HomePage = () => {
   const [isLoadingPlaylist, setIsLoadingPlaylist] = useState(false)
   const [playlist, setPlaylist] = useState(null)
   const [error, setError] = useState(null)
+  const [weatherData, setWeatherData] = useState(null)
   
   // Spotify integration states
   const [isSpotifyConnected, setIsSpotifyConnected] = useState(false)
   const [isCreatingSpotifyPlaylist, setIsCreatingSpotifyPlaylist] = useState(false)
   const [spotifyPlaylistResult, setSpotifyPlaylistResult] = useState(null)
   const [spotifyError, setSpotifyError] = useState(null)
+  const [lastRequestTime, setLastRequestTime] = useState(0)
 
   const handleVibeCheck = async () => {
+    // Prevent multiple requests within 2 seconds
+    const now = Date.now();
+    if (now - lastRequestTime < 2000) {
+      console.log('Debouncing request - too soon after last request');
+      return;
+    }
+    setLastRequestTime(now);
+
+    // Check if already loading
+    if (isLoadingPlaylist) {
+      return;
+    }
+
     // Check if required fields are selected
     if (!selectedLocation.lat || !selectedLocation.lng || !selectedMood) {
-      console.log('Missing required fields for Vibe Check')
-      return
+      setError('Please select your location and mood first');
+      return;
+    }
+
+    // Check if weather data is available
+    if (!weatherData) {
+      setError('Please wait for weather data to load');
+      return;
     }
 
     // Check if user is connected to Spotify
     if (!checkSpotifyConnection()) {
-      setSpotifyError('Please connect to Spotify first to create your playlist')
-      return
+      setSpotifyError('Please connect to Spotify first to create your playlist');
+      return;
     }
 
-    // Collect all selected data
-    const vibeData = {
-      location: {
-        latitude: selectedLocation.lat,
-        longitude: selectedLocation.lng
-      },
-      mood: selectedMood,
-      situation: selectedSituation, // Optional field
-      timestamp: new Date().toISOString(),
-      user: user?.email || 'anonymous'
-    }
-
-    console.log('🎵 VIBE CHECK DATA:', vibeData)
-    
-    // Reset error state
-    setError(null)
-    setSpotifyError(null)
-    setIsLoadingPlaylist(true)
+    // Reset states
+    setError(null);
+    setSpotifyError(null);
+    setIsLoadingPlaylist(true);
+    setPlaylist(null);
+    setSpotifyPlaylistResult(null);
     
     try {
+      // Start the vibe check animation
+      setVibeActive(true);
+      setVibeStep(1);
+      
       // Prepare data for song recommendation agent
       const requestData = {
         latitude: selectedLocation.lat,
         longitude: selectedLocation.lng,
-        mood: selectedMood.name.toLowerCase(), // Convert mood to lowercase
-        situationalMood: selectedSituation?.name || null // Use situation name if available
+        mood: selectedMood.name.toLowerCase(),
+        situationalMood: selectedSituation?.name || null,
+        weatherData: weatherData
+      };
+      
+      console.log('Sending request to song agent:', requestData);
+      
+      // Call the song recommendation agent with timeout
+      let playlistResult;
+      try {
+        console.log('🎵 [PLAYLIST] Starting playlist generation process...');
+        
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => {
+            console.log('⏰ [PLAYLIST] Timeout reached - playlist generation taking too long');
+            reject(new Error('Playlist generation timed out'));
+          }, 30000);
+        });
+        
+        console.log('🤖 [PLAYLIST] Calling song recommendation agent...');
+        const songPromise = songRecommendationAgent(requestData);
+        playlistResult = await Promise.race([songPromise, timeoutPromise]);
+        
+        console.log('⌛ [PLAYLIST] Adding delay to ensure complete processing...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        console.log('📝 [PLAYLIST] Received playlist result:', playlistResult);
+        
+        if (!playlistResult || !playlistResult.playlist) {
+          console.error('🚨 [PLAYLIST] Invalid playlist response:', playlistResult);
+          throw new Error('Invalid playlist response');
+        }
+
+        console.log('✅ [PLAYLIST] Playlist data validated successfully');
+      } catch (error) {
+        console.error('🚨 [PLAYLIST] Error during playlist generation:', error);
+        if (error.message === 'Playlist generation timed out') {
+          throw new Error('Playlist generation is taking longer than expected. Please try again.');
+        }
+        throw error;
       }
       
-      console.log('🎵 SENDING TO SONG AGENT:', requestData)
-      
-      // Call the song recommendation agent
-      const playlistResult = await songRecommendationAgent(requestData)
-      
-      console.log('🎵 PLAYLIST RESULT:', playlistResult)
-      
       // Store the playlist result
-      setPlaylist(playlistResult)
+      console.log('💾 [PLAYLIST] Storing playlist result...');
+      setPlaylist(playlistResult);
       
-      // Start the vibe check animation
-      setVibeActive(true)
-      setVibeStep(1)
-      // Simulate each step with a delay
-      setTimeout(() => setVibeStep(2), 1000)
-      setTimeout(() => setVibeStep(3), 2000)
-      setTimeout(() => setVibeStep(4), 3000)
-      setTimeout(() => setVibeStep(5), 4000)
+      // Update vibe steps
+      console.log('🎨 [PLAYLIST] Updating vibe animation steps...');
+      setVibeStep(2);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setVibeStep(3);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setVibeStep(4);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setVibeStep(5);
       
-      // Automatically create Spotify playlist after a short delay
-      setTimeout(async () => {
-        await createSpotifyPlaylist()
-      }, 4500)
+      // Create Spotify playlist using the result directly
+      console.log('🎵 [PLAYLIST] Starting Spotify playlist creation...');
+      await createSpotifyPlaylist(playlistResult);
       
     } catch (error) {
-      console.error('🚨 ERROR generating playlist:', error)
-      setError(error.message || 'Failed to generate playlist')
+      console.error('🚨 ERROR generating playlist:', error);
+      setError(error.message || 'Failed to generate playlist');
+      setVibeActive(false);
+      setVibeStep(0);
     } finally {
-      setIsLoadingPlaylist(false)
+      setIsLoadingPlaylist(false);
     }
   }
 
@@ -145,6 +192,12 @@ const HomePage = () => {
     setSelectedSituation(situation)
   }
 
+  // Handle weather data updates
+  const handleWeatherData = (data) => {
+    console.log('Weather data updated:', data ? 'received' : 'cleared');
+    setWeatherData(data);
+  };
+
   // Check if user is connected to Spotify
   const checkSpotifyConnection = () => {
     const isConnected = spotifyService.isTokenValid()
@@ -159,13 +212,17 @@ const HomePage = () => {
   }
 
   // Create Spotify playlist from generated songs
-  const createSpotifyPlaylist = async () => {
-    if (!playlist || !playlist.playlist) {
+  const createSpotifyPlaylist = async (playlistData) => {
+    console.log('🎵 [SPOTIFY] Starting playlist creation process...');
+    
+    if (!playlistData || !playlistData.playlist) {
+      console.error('🚨 [SPOTIFY] No playlist data available:', playlistData);
       setSpotifyError('No playlist available to create')
       return
     }
 
     if (!checkSpotifyConnection()) {
+      console.error('🚨 [SPOTIFY] Not connected to Spotify');
       setSpotifyError('Please connect to Spotify first')
       return
     }
@@ -174,6 +231,7 @@ const HomePage = () => {
     setSpotifyError(null)
 
     try {
+      console.log('🔑 [SPOTIFY] Getting access token...');
       const tokens = spotifyService.getStoredTokens()
       const accessToken = tokens.access_token
 
@@ -181,24 +239,39 @@ const HomePage = () => {
       const playlistName = `VibeCheck: ${selectedMood?.name || 'Mood'} ${selectedSituation ? `- ${selectedSituation.name}` : ''}`
       const description = `Generated by VibeCheck for ${selectedMood?.name || 'your mood'} ${selectedSituation ? `while ${selectedSituation.name}` : ''}`
 
+      console.log('📝 [SPOTIFY] Creating playlist with details:', {
+        playlistName,
+        description,
+        songCount: playlistData.playlist.length
+      });
+
       const result = await spotifyService.createPlaylistFromSongs(
         accessToken,
-        playlist.playlist,
+        playlistData.playlist,
         playlistName,
         description
       )
+
+      console.log('✅ [SPOTIFY] Playlist created successfully:', {
+        playlistId: result.playlistId,
+        totalSongs: result.totalSongs,
+        foundSongs: result.foundSongs,
+        notFoundSongs: result.notFoundSongs
+      });
 
       setSpotifyPlaylistResult(result)
       
       // Automatically open the playlist in Spotify after a short delay
       setTimeout(() => {
         if (result.playlistUrl) {
+          console.log('🌐 [SPOTIFY] Opening playlist URL:', result.playlistUrl);
           window.open(result.playlistUrl, '_blank')
         }
       }, 1000)
       
     } catch (error) {
-      console.error('Error creating Spotify playlist:', error)
+      console.error('🚨 [SPOTIFY] Error creating playlist:', error);
+      console.error('🚨 [SPOTIFY] Playlist data that failed:', playlistData);
       setSpotifyError(error.message || 'Failed to create Spotify playlist')
     } finally {
       setIsCreatingSpotifyPlaylist(false)
@@ -257,7 +330,11 @@ const HomePage = () => {
           </SpotifyCard>
           <SpotifyCard>
             <h3 className="text-lg font-semibold mb-4">🌤️ Weather</h3>
-            <WeatherSelector latitude={selectedLocation.lat} longitude={selectedLocation.lng} />
+            <WeatherSelector 
+              latitude={selectedLocation.lat} 
+              longitude={selectedLocation.lng}
+              onWeatherData={handleWeatherData}
+            />
           </SpotifyCard>
           <SpotifyCard>
             <h3 className="text-lg font-semibold mb-4">🎭 Mood</h3>
@@ -273,7 +350,7 @@ const HomePage = () => {
         <div className="mt-12 text-center">
           <SpotifyButton
             onClick={handleVibeCheck}
-            disabled={isLoadingPlaylist || !isSpotifyConnected || !selectedLocation.lat || !selectedLocation.lng || !selectedMood}
+            disabled={isLoadingPlaylist || !isSpotifyConnected || !selectedLocation.lat || !selectedLocation.lng || !selectedMood || !weatherData}
             className="text-lg font-bold px-10 py-4"
           >
             {isLoadingPlaylist ? (
@@ -283,7 +360,7 @@ const HomePage = () => {
               </div>
             ) : !isSpotifyConnected ? (
               'Connect Spotify First'
-            ) : !selectedLocation.lat || !selectedLocation.lng || !selectedMood ? (
+            ) : !selectedLocation.lat || !selectedLocation.lng || !selectedMood || !weatherData ? (
               'Complete Your Vibe'
             ) : (
               'Create Spotify Playlist'
