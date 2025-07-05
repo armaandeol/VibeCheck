@@ -5,6 +5,7 @@ import LocationSelector from '../components/LocationSelector'
 import WeatherSelector from '../components/WeatherSelector'
 import MoodSelector from '../components/MoodSelector'
 import SituationSelector from '../components/SituationSelector'
+import WeatherAnimation from '../components/WeatherAnimation'
 import songRecommendationAgent from '../Agents/songsrecommnedation.js'
 import spotifyService from '../lib/spotify.js'
 import SpotifyCard from '../components/SpotifyCard'
@@ -267,6 +268,28 @@ const HomePage = () => {
     setWeatherData(data);
   };
 
+  // Check if weather is rainy
+  const isRainyWeather = () => {
+    if (!weatherData || !weatherData.weather || !weatherData.weather[0]) {
+      return false;
+    }
+    
+    const weatherId = weatherData.weather[0].id;
+    const weatherMain = weatherData.weather[0].main.toLowerCase();
+    const weatherDescription = weatherData.weather[0].description.toLowerCase();
+    
+    // Check for rain-related weather conditions
+    return (
+      weatherId >= 200 && weatherId < 600 || // Thunderstorm, Drizzle, Rain
+      weatherMain.includes('rain') ||
+      weatherMain.includes('drizzle') ||
+      weatherMain.includes('thunderstorm') ||
+      weatherDescription.includes('rain') ||
+      weatherDescription.includes('drizzle') ||
+      weatherDescription.includes('shower')
+    );
+  };
+
   // Check if user is connected to Spotify
   const checkSpotifyConnection = () => {
     const isConnected = spotifyService.isTokenValid()
@@ -354,6 +377,9 @@ const HomePage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black text-white pt-16">
+      {/* Professional Weather Animation Background */}
+      {weatherData && <WeatherAnimation weatherData={weatherData} />}
+      
       <div className="max-w-4xl mx-auto px-6 py-12">
         {/* Spotify Connection Status */}
         <SpotifySection className="mb-12">
