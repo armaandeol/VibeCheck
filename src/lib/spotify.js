@@ -20,15 +20,7 @@ class SpotifyService {
 
   // Generate Spotify authorization URL
   getAuthUrl() {
-    const params = new URLSearchParams({
-      response_type: 'code',
-      client_id: CLIENT_ID,
-      scope: SPOTIFY_SCOPES.join(' '),
-      redirect_uri: REDIRECT_URI,
-      show_dialog: true
-    });
-
-    return `https://accounts.spotify.com/authorize?${params.toString()}`;
+    return `https://accounts.spotify.com/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${REDIRECT_URI}&scope=${encodeURIComponent(SPOTIFY_SCOPES.join(" "))}&show_dialog=true`;
   }
 
   // Exchange authorization code for access token
