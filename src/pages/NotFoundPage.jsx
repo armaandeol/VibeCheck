@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
+import SpotifyCard from '../components/SpotifyCard'
+import SpotifyButton from '../components/SpotifyButton'
 
 function NotFoundPage() {
   const videoRef = useRef(null)
@@ -96,7 +98,7 @@ function NotFoundPage() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-black via-gray-900 to-black pt-16">
       {/* Background Video (optimized) */}
       <video
         ref={videoRef}
@@ -123,11 +125,11 @@ function NotFoundPage() {
       </audio>
 
       {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black bg-opacity-50"></div>
+      <div className="absolute inset-0 bg-black bg-opacity-60"></div>
 
       {/* Content */}
       <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
-        <div className="text-center text-white">
+        <SpotifyCard className="text-center max-w-lg mx-auto">
           <h1 className="text-4xl sm:text-6xl font-bold mb-4 drop-shadow-lg">Track Not Found</h1>
           <p className="text-lg sm:text-xl mb-8 drop-shadow-md max-w-md mx-auto">
             🎵 Looks like this page skipped a beat!
@@ -142,7 +144,7 @@ function NotFoundPage() {
               max="1"
               step="0.01"
               value={volume}
-              onChange={handleVolumeChange}
+              onChange={e => setVolume(Number(e.target.value))}
               className="w-24 sm:w-32 h-1 bg-gray-500 rounded-full appearance-none cursor-pointer focus:outline-none"
               style={{
                 background: `linear-gradient(to right, #fff 0%, #fff ${volume * 100}%, rgba(255,255,255,0.3) ${volume * 100}%, rgba(255,255,255,0.3) 100%)`
@@ -155,20 +157,14 @@ function NotFoundPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link
-              to="/"
-              className="inline-block bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors font-medium"
-            >
+            <SpotifyButton as={Link} to="/" className="bg-gradient-to-r from-purple-600 to-blue-600 text-white">
               🏠 Home
-            </Link>
-            <Link
-              to="/about"
-              className="inline-block bg-white bg-opacity-20 text-white px-6 py-2 rounded-lg hover:bg-opacity-30 transition-colors font-medium backdrop-blur-sm"
-            >
+            </SpotifyButton>
+            <SpotifyButton as={Link} to="/about" className="bg-white bg-opacity-20 text-white hover:bg-opacity-30 backdrop-blur-sm">
               🎵 Discover
-            </Link>
+            </SpotifyButton>
           </div>
-        </div>
+        </SpotifyCard>
       </div>
 
       {/* Performance optimization - preload critical resources */}

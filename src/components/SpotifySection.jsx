@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react';
 import SpotifyService from '../lib/spotify';
+import React from 'react'
 
-const SpotifySection = () => {
+const SpotifySection = ({ children, className = '' }) => (
+  <section className={`bg-gray-900/80 border border-gray-800 rounded-xl p-6 mb-8 ${className}`}>
+    {children}
+  </section>
+)
+
+const SpotifySectionContent = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [spotifyProfile, setSpotifyProfile] = useState(null);
   const [topArtists, setTopArtists] = useState([]);
