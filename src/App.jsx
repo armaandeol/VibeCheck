@@ -5,44 +5,53 @@ import DashboardPage from './pages/DashboardPage'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import ProfilePage from './pages/ProfilePage'
+import NotFoundPage from './pages/NotFoundPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import PublicRoute from './components/PublicRoute'
+import RootRoute from './components/RootRoute'
 
 function App() {
   return (
     <AuthProvider>
       <Router>
         <div className="App">
-          <Navbar />
-          <div className="pt-16">
-            <Routes>
-              <Route path="/" element={<DashboardPage />} />
-              <Route 
-                path="/login" 
-                element={
-                  <PublicRoute>
-                    <LoginPage />
-                  </PublicRoute>
-                } 
-              />
-              <Route 
-                path="/home" 
-                element={
-                  <ProtectedRoute>
-                    <HomePage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/profile" 
-                element={
-                  <ProtectedRoute>
-                    <ProfilePage />
-                  </ProtectedRoute>
-                } 
-              />
-            </Routes>
-          </div>
+          <Routes>
+            <Route path="/" element={
+              <>
+                <Navbar />
+                <div className="pt-16">
+                  <RootRoute />
+                </div>
+              </>
+            } />
+            <Route 
+              path="/login" 
+              element={
+                <>
+                  <Navbar />
+                  <div className="pt-16">
+                    <PublicRoute>
+                      <LoginPage />
+                    </PublicRoute>
+                  </div>
+                </>
+              } 
+            />
+            <Route 
+              path="/profile" 
+              element={
+                <>
+                  <Navbar />
+                  <div className="pt-16">
+                    <ProtectedRoute>
+                      <ProfilePage />
+                    </ProtectedRoute>
+                  </div>
+                </>
+              } 
+            />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
         </div>
       </Router>
     </AuthProvider>

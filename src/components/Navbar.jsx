@@ -45,9 +45,9 @@ const Navbar = () => {
             {user ? (
               <>
                 <Link 
-                  to="/home" 
+                  to="/" 
                   className={`text-sm font-medium transition-colors ${
-                    isActive('/home') ? 'text-green-400' : 'text-gray-300 hover:text-white'
+                    isActive('/') ? 'text-green-400' : 'text-gray-300 hover:text-white'
                   }`}
                 >
                   Home
