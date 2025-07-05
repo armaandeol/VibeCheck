@@ -5,6 +5,7 @@ import LocationSelector from '../components/LocationSelector'
 import WeatherSelector from '../components/WeatherSelector'
 import MoodSelector from '../components/MoodSelector'
 import SituationSelector from '../components/SituationSelector'
+import songRecommendationAgent from '../Agents/songsrecommnedation.js'
 
 const featureList = [
   {
@@ -45,15 +46,69 @@ const HomePage = () => {
   const [selectedLocation, setSelectedLocation] = useState({ lat: null, lng: null })
   const [selectedMood, setSelectedMood] = useState(null)
   const [selectedSituation, setSelectedSituation] = useState(null)
+  const [isLoadingPlaylist, setIsLoadingPlaylist] = useState(false)
+  const [playlist, setPlaylist] = useState(null)
+  const [error, setError] = useState(null)
 
-  const handleVibeCheck = () => {
-    setVibeActive(true)
-    setVibeStep(1)
-    // Simulate each step with a delay
-    setTimeout(() => setVibeStep(2), 1000)
-    setTimeout(() => setVibeStep(3), 2000)
-    setTimeout(() => setVibeStep(4), 3000)
-    setTimeout(() => setVibeStep(5), 4000)
+  const handleVibeCheck = async () => {
+    // Check if required fields are selected
+    if (!selectedLocation.lat || !selectedLocation.lng || !selectedMood) {
+      console.log('Missing required fields for Vibe Check')
+      return
+    }
+
+    // Collect all selected data
+    const vibeData = {
+      location: {
+        latitude: selectedLocation.lat,
+        longitude: selectedLocation.lng
+      },
+      mood: selectedMood,
+      situation: selectedSituation, // Optional field
+      timestamp: new Date().toISOString(),
+      user: user?.email || 'anonymous'
+    }
+
+    console.log('🎵 VIBE CHECK DATA:', vibeData)
+    
+    // Reset error state
+    setError(null)
+    setIsLoadingPlaylist(true)
+    
+    try {
+      // Prepare data for song recommendation agent
+      const requestData = {
+        latitude: selectedLocation.lat,
+        longitude: selectedLocation.lng,
+        mood: selectedMood.name.toLowerCase(), // Convert mood to lowercase
+        situationalMood: selectedSituation?.name || null // Use situation name if available
+      }
+      
+      console.log('🎵 SENDING TO SONG AGENT:', requestData)
+      
+      // Call the song recommendation agent
+      const playlistResult = await songRecommendationAgent(requestData)
+      
+      console.log('🎵 PLAYLIST RESULT:', playlistResult)
+      
+      // Store the playlist result
+      setPlaylist(playlistResult)
+      
+      // Start the vibe check animation
+      setVibeActive(true)
+      setVibeStep(1)
+      // Simulate each step with a delay
+      setTimeout(() => setVibeStep(2), 1000)
+      setTimeout(() => setVibeStep(3), 2000)
+      setTimeout(() => setVibeStep(4), 3000)
+      setTimeout(() => setVibeStep(5), 4000)
+      
+    } catch (error) {
+      console.error('🚨 ERROR generating playlist:', error)
+      setError(error.message || 'Failed to generate playlist')
+    } finally {
+      setIsLoadingPlaylist(false)
+    }
   }
 
   const handleLocationChange = (lat, lng) => {
@@ -90,6 +145,154 @@ const HomePage = () => {
         {/* Situation Selector Section */}
         <div className="w-full max-w-4xl mx-auto mb-16">
           <SituationSelector onSituationChange={handleSituationChange} />
+        </div>
+
+        {/* Vibe Check Button Section */}
+        <div className="w-full max-w-4xl mx-auto mb-16 text-center">
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-gray-200">
+            <div className="text-4xl mb-4">🎵</div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-4">Ready for Your Vibe Check?</h3>
+            
+            {/* Required Fields Check */}
+            {(!selectedLocation.lat || !selectedLocation.lng || !selectedMood) ? (
+              <div className="mb-6">
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-center gap-2 text-amber-700">
+                    <span className="text-xl">⚠️</span>
+                    <span className="font-medium">Required fields missing</span>
+                  </div>
+                  <div className="mt-2 text-sm text-amber-600">
+                    Please complete the following before your vibe check:
+                    <ul className="mt-2 space-y-1">
+                      {(!selectedLocation.lat || !selectedLocation.lng) && (
+                        <li className="flex items-center gap-2">
+                          <span className="w-2 h-2 bg-amber-400 rounded-full"></span>
+                          Select a location on the map
+                        </li>
+                      )}
+                      {!selectedMood && (
+                        <li className="flex items-center gap-2">
+                          <span className="w-2 h-2 bg-amber-400 rounded-full"></span>
+                          Choose your current mood
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+                <button
+                  disabled
+                  className="bg-gray-300 text-gray-500 px-8 py-4 rounded-xl text-lg font-semibold cursor-not-allowed"
+                >
+                  Complete Required Fields First
+                </button>
+              </div>
+            ) : (
+              <div className="mb-6">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-center gap-2 text-green-700">
+                    <span className="text-xl">✅</span>
+                    <span className="font-medium">All set!</span>
+                  </div>
+                  <div className="mt-2 text-sm text-green-600">
+                    Location and mood selected. Ready to generate your personalized vibe!
+                  </div>
+                </div>
+                <button
+                  onClick={handleVibeCheck}
+                  disabled={isLoadingPlaylist}
+                  className={`${
+                    isLoadingPlaylist 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transform hover:scale-105'
+                  } text-white px-8 py-4 rounded-xl text-lg font-semibold shadow-lg transition-all duration-200`}
+                >
+                  {isLoadingPlaylist ? (
+                    <>
+                      <span className="inline-block animate-spin mr-2">🎵</span>
+                      Generating Playlist...
+                    </>
+                  ) : (
+                    '🎵 Start Vibe Check'
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* Error Display */}
+            {error && (
+              <div className="mb-6">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-red-700">
+                    <span className="text-xl">❌</span>
+                    <span className="font-medium">Error generating playlist</span>
+                  </div>
+                  <div className="mt-2 text-sm text-red-600">
+                    {error}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Playlist Results */}
+            {playlist && (
+              <div className="mb-6">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-green-700 mb-4">
+                    <span className="text-xl">🎵</span>
+                    <span className="font-medium">Your Personalized Playlist</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                    {playlist.playlist.map((song, index) => (
+                      <div key={index} className="bg-white rounded-lg p-3 border border-green-200">
+                        <div className="font-medium text-gray-800">{song.title}</div>
+                        <div className="text-gray-600">by {song.artist}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Summary of Selected Data */}
+            <div className="text-left">
+              <h4 className="font-semibold text-gray-800 mb-3">Your Selections:</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <div className="font-medium text-gray-700">📍 Location</div>
+                  <div className="text-gray-600">
+                    {selectedLocation.lat && selectedLocation.lng 
+                      ? `${selectedLocation.lat.toFixed(4)}, ${selectedLocation.lng.toFixed(4)}`
+                      : 'Not selected'
+                    }
+                  </div>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <div className="font-medium text-gray-700">🎭 Mood</div>
+                  <div className="text-gray-600">
+                    {selectedMood 
+                      ? `${selectedMood.emoji} ${selectedMood.name}`
+                      : 'Not selected'
+                    }
+                  </div>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <div className="font-medium text-gray-700">🎬 Situation</div>
+                  <div className="text-gray-600">
+                    {selectedSituation 
+                      ? `${selectedSituation.emoji} ${selectedSituation.name}`
+                      : 'Not specified (optional)'
+                    }
+                  </div>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <div className="font-medium text-gray-700">👤 User</div>
+                  <div className="text-gray-600">
+                    {user?.email || 'Anonymous'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         
 

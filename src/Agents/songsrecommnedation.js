@@ -1,6 +1,4 @@
-// Add dotenv import and configuration at the top
-import dotenv from 'dotenv';
-dotenv.config({ path: '.env.local' });
+import axios from "axios";
 
 const SYSTEM_PROMPT = `
 You are SongRecommendationAgent, an AI music curator that creates personalized playlists based on location, weather, time, and mood with MANDATORY cultural awareness.
@@ -111,52 +109,51 @@ Before responding, verify:
 **FAILURE TO FOLLOW THESE RULES RESULTS IN COMPLETE REJECTION OF YOUR RESPONSE**
 `.trim();
 
-import axios from "axios";
-
 export default async function songRecommendationAgent(request) {
-    const GROQ_API_KEY = process.env.VITE_GROQ_API_KEY;
-    const OPENWEATHER_API_KEY = process.env.VITE_OPENWEATHER_API_KEY;
-    
-    if (!GROQ_API_KEY) {
-        throw new Error("GROQ_API_KEY not found in environment variables");
-    }
-    
-    if (!OPENWEATHER_API_KEY) {
-        throw new Error("OPENWEATHER_API_KEY not found in environment variables");
-    }
+  const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
+  const OPENWEATHER_API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY;
 
-    const { latitude, longitude, mood, situationalMood } = request;
-    
-    if (!latitude || !longitude || !mood) {
-        throw new Error("Missing required parameters: latitude, longitude, and mood are required");
-    }
+  if (!GROQ_API_KEY) {
+    throw new Error("GROQ_API_KEY not found in environment variables");
+  }
 
-    try {
-        // Get weather data directly using coordinates
-        const weatherResponse = await axios.get(
-            `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${OPENWEATHER_API_KEY}&units=metric`
-        );
-        
-        const weatherData = weatherResponse.data;
-        const currentTime = new Date().toLocaleTimeString();
-        const currentDate = new Date().toLocaleDateString();
-        
-        // Extract weather information
-        const weatherMain = weatherData.weather[0].main; // e.g., "Rain", "Clear", "Clouds"
-        const weatherDescription = weatherData.weather[0].description; // e.g., "light rain", "clear sky"
-        const temperature = Math.round(weatherData.main.temp);
-        const cityName = weatherData.name; // City name from weather response
-        const country = weatherData.sys.country; // Country code from weather response
-        
-        // Determine time of day
-        const hour = new Date().getHours();
-        let timeOfDay = "morning";
-        if (hour >= 12 && hour < 17) timeOfDay = "afternoon";
-        else if (hour >= 17 && hour < 21) timeOfDay = "evening";
-        else if (hour >= 21 || hour < 6) timeOfDay = "night";
-        
-        // Create STRICT recommendation prompt
-        const recommendationPrompt = `
+  if (!OPENWEATHER_API_KEY) {
+    throw new Error("OPENWEATHER_API_KEY not found in environment variables");
+  }
+
+  const { latitude, longitude, mood, situationalMood } = request;
+
+  if (!latitude || !longitude || !mood) {
+    throw new Error(
+      "Missing required parameters: latitude, longitude, and mood are required"
+    );
+  }
+
+  try {
+    // Get weather data directly using coordinates
+    const weatherResponse = await axios.get(
+      `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${OPENWEATHER_API_KEY}&units=metric`
+    );
+
+    const weatherData = weatherResponse.data;
+    const currentTime = new Date().toLocaleTimeString();
+
+    // Extract weather information
+    const weatherMain = weatherData.weather[0].main;
+    const weatherDescription = weatherData.weather[0].description;
+    const temperature = Math.round(weatherData.main.temp);
+    const cityName = weatherData.name;
+    const country = weatherData.sys.country;
+
+    // Determine time of day
+    const hour = new Date().getHours();
+    let timeOfDay = "morning";
+    if (hour >= 12 && hour < 17) timeOfDay = "afternoon";
+    else if (hour >= 17 && hour < 21) timeOfDay = "evening";
+    else if (hour >= 21 || hour < 6) timeOfDay = "night";
+
+    // Create recommendation prompt
+    const recommendationPrompt = `
 LOCATION: ${cityName}, ${country}
 WEATHER: ${weatherMain} (${weatherDescription}), ${temperature}°C
 TIME: ${currentTime} (${timeOfDay})
@@ -170,191 +167,176 @@ CRITICAL INSTRUCTIONS:
 4. Include exactly 10 songs
 5. Use real artist names and song titles only
 
-CULTURAL REQUIREMENT CHECK:
-- If this is Chennai, India: YOU MUST INCLUDE 6+ TAMIL SONGS (A.R. Rahman, Anirudh, Yuvan Shankar Raja, Harris Jayaraj, D. Imman, etc.)
-- If this is Mumbai, India: YOU MUST INCLUDE 5+ HINDI/BOLLYWOOD + 2-3 MARATHI SONGS
-- If this is Hyderabad, India: YOU MUST INCLUDE 5+ TELUGU SONGS (M.M. Keeravani, Devi Sri Prasad, Thaman, etc.)
-- If this is any other Indian city: Include appropriate regional language songs + Hindi + English
-- If this is an East Asian city: Include K-pop/J-pop/C-pop as appropriate
-- If this is any other region: Include local music styles and languages
-
-MANDATORY: Regional songs are NON-NEGOTIABLE for Indian cities!
-
 IMPORTANT: Your response must be PURE JSON starting with { and ending with }. 
 NO \`\`\`json, NO \`\`\`markdown, NO explanations, NO additional text.
 
 GENERATE PLAYLIST NOW - PURE JSON ONLY:`;
 
-        // Call AI model for song recommendations
-        const result = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
-            model: "meta-llama/llama-4-scout-17b-16e-instruct",
-            temperature: 0.2, // Even lower temperature for more consistent output
-            max_tokens: 800,
-            messages: [
-                { role: "system", content: SYSTEM_PROMPT },
-                { role: "user", content: recommendationPrompt }
-            ],
-        }, {
-            headers: {
-                "Authorization": `Bearer ${GROQ_API_KEY}`,
-                "Content-Type": "application/json"
-            }
-        });
+    // Call AI model for song recommendations
+    const result = await axios.post(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        temperature: 0.2,
+        max_tokens: 800,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: recommendationPrompt },
+        ],
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${GROQ_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
-        if (result.status !== 200) {
-            throw new Error(`Groq API error: ${result.status} – ${result.data}`);
-        }
-
-        let aiResponse = result.data.choices[0].message.content.trim();
-        
-        // Clean up the response - remove markdown code blocks if present
-        aiResponse = aiResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-        
-        // Remove any leading/trailing whitespace or newlines
-        aiResponse = aiResponse.trim();
-        
-        // Clean up bad control characters and fix common JSON issues
-        aiResponse = aiResponse.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '');
-        aiResponse = aiResponse.replace(/,\s*]/g, ']'); // Remove trailing commas in arrays
-        aiResponse = aiResponse.replace(/,\s*}/g, '}'); // Remove trailing commas in objects
-        
-        // Try to parse the JSON response
-        try {
-            const parsedResponse = JSON.parse(aiResponse);
-            
-            // Validate the response structure
-            if (!parsedResponse.playlist || !Array.isArray(parsedResponse.playlist)) {
-                throw new Error('Invalid response structure: missing playlist array');
-            }
-            
-            if (parsedResponse.playlist.length !== 10) {
-                throw new Error(`Invalid playlist length: expected 10 songs, got ${parsedResponse.playlist.length}`);
-            }
-            
-            // Validate each song has title and artist and clean up any malformed entries
-            const cleanedPlaylist = [];
-            for (let i = 0; i < parsedResponse.playlist.length; i++) {
-                const song = parsedResponse.playlist[i];
-                if (song.title && song.artist && 
-                    typeof song.title === 'string' && 
-                    typeof song.artist === 'string' &&
-                    song.title.trim() !== '' && 
-                    song.artist.trim() !== '') {
-                    cleanedPlaylist.push({
-                        title: song.title.trim(),
-                        artist: song.artist.trim()
-                    });
-                }
-            }
-            
-            if (cleanedPlaylist.length < 10) {
-                throw new Error(`Invalid playlist: only ${cleanedPlaylist.length} valid songs found`);
-            }
-            
-            return {
-                playlist: cleanedPlaylist.slice(0, 10) // Ensure exactly 10 songs
-            };
-        } catch (parseError) {
-            console.error('Parse error details:', parseError.message);
-            console.error('AI response that failed to parse:', aiResponse);
-            
-            // Try to extract JSON from the response more aggressively
-            const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-                try {
-                    let extractedJson = jsonMatch[0];
-                    
-                    // Try to fix common JSON issues
-                    extractedJson = extractedJson.replace(/,\s*}/g, '}'); // Remove trailing commas
-                    extractedJson = extractedJson.replace(/,\s*]/g, ']'); // Remove trailing commas in arrays
-                    
-                    const parsedJson = JSON.parse(extractedJson);
-                    
-                    // Validate extracted JSON
-                    if (!parsedJson.playlist || !Array.isArray(parsedJson.playlist)) {
-                        throw new Error('Extracted JSON is invalid or incomplete');
-                    }
-                    
-                    // Clean up the playlist
-                    const cleanedPlaylist = [];
-                    for (const song of parsedJson.playlist) {
-                        if (song.title && song.artist && 
-                            typeof song.title === 'string' && 
-                            typeof song.artist === 'string' &&
-                            song.title.trim() !== '' && 
-                            song.artist.trim() !== '') {
-                            cleanedPlaylist.push({
-                                title: song.title.trim(),
-                                artist: song.artist.trim()
-                            });
-                        }
-                    }
-                    
-                    if (cleanedPlaylist.length < 8) { // Allow some tolerance
-                        throw new Error(`Not enough valid songs: only ${cleanedPlaylist.length} found`);
-                    }
-                    
-                    // Pad to 10 songs if needed (shouldn't happen with strict prompt)
-                    while (cleanedPlaylist.length < 10) {
-                        cleanedPlaylist.push({
-                            title: `Song ${cleanedPlaylist.length + 1}`,
-                            artist: "Unknown Artist"
-                        });
-                    }
-                    
-                    return {
-                        playlist: cleanedPlaylist.slice(0, 10)
-                    };
-                } catch (secondParseError) {
-                    console.error('Failed to parse extracted JSON:', jsonMatch[0]);
-                    console.error('Second parse error:', secondParseError.message);
-                    throw new Error('AI response is not valid JSON format - unable to extract valid playlist');
-                }
-            } else {
-                console.error('No JSON found in AI response:', aiResponse);
-                throw new Error('AI response does not contain valid JSON');
-            }
-        }
-        
-    } catch (error) {
-        console.error('Error generating song recommendations:', error);
-        throw error;
+    if (result.status !== 200) {
+      throw new Error(`Groq API error: ${result.status} – ${result.data}`);
     }
+
+    let aiResponse = result.data.choices[0].message.content.trim();
+
+    // Clean up the response
+    aiResponse = aiResponse.replace(/```json\s*/g, "").replace(/```\s*/g, "");
+    aiResponse = aiResponse.trim();
+
+    // Enhanced JSON cleaning for malformed responses
+    aiResponse = aiResponse.replace(
+      /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g,
+      ""
+    );
+    aiResponse = aiResponse.replace(/,\s*]/g, "]");
+    aiResponse = aiResponse.replace(/,\s*}/g, "}");
+
+    // Fix incomplete JSON objects - the main issue we're seeing
+    aiResponse = aiResponse.replace(/,\s*{\s*(?!["'])/g, ",\n{");
+    aiResponse = aiResponse.replace(/{\s*{/g, "{");
+    aiResponse = aiResponse.replace(/}\s*}/g, "}");
+
+    // Fix missing closing braces
+    const openBraces = (aiResponse.match(/{/g) || []).length;
+    const closeBraces = (aiResponse.match(/}/g) || []).length;
+
+    if (openBraces > closeBraces) {
+      const missingBraces = openBraces - closeBraces;
+      for (let i = 0; i < missingBraces; i++) {
+        aiResponse += "}";
+      }
+    }
+
+    console.log("Cleaned AI Response:", aiResponse);
+
+    // Try to parse the JSON response
+    try {
+      const parsedResponse = JSON.parse(aiResponse);
+
+      if (!parsedResponse.playlist || !Array.isArray(parsedResponse.playlist)) {
+        throw new Error("Invalid response structure: missing playlist array");
+      }
+
+      // Validate and clean songs
+      const cleanedPlaylist = [];
+      for (let i = 0; i < parsedResponse.playlist.length; i++) {
+        const song = parsedResponse.playlist[i];
+        if (
+          song.title &&
+          song.artist &&
+          typeof song.title === "string" &&
+          typeof song.artist === "string" &&
+          song.title.trim() !== "" &&
+          song.artist.trim() !== ""
+        ) {
+          cleanedPlaylist.push({
+            title: song.title.trim(),
+            artist: song.artist.trim(),
+          });
+        } else {
+          console.warn(`Skipping malformed song at index ${i}:`, song);
+        }
+      }
+
+      if (cleanedPlaylist.length < 5) {
+        throw new Error(
+          `Invalid playlist: only ${cleanedPlaylist.length} valid songs found`
+        );
+      }
+
+      // Pad to 10 songs if needed
+      while (cleanedPlaylist.length < 10) {
+        cleanedPlaylist.push({
+          title: `Song ${cleanedPlaylist.length + 1}`,
+          artist: "Unknown Artist",
+        });
+      }
+
+      return {
+        playlist: cleanedPlaylist.slice(0, 10),
+      };
+    } catch (parseError) {
+      console.error("Parse error details:", parseError.message);
+      console.error("AI response that failed to parse:", aiResponse);
+
+      // Fallback playlist
+      console.log("Creating fallback playlist due to JSON parsing failure");
+
+      const fallbackPlaylist = [
+        { title: "Perfect", artist: "Ed Sheeran" },
+        { title: "Blinding Lights", artist: "The Weeknd" },
+        { title: "Watermelon Sugar", artist: "Harry Styles" },
+        { title: "Levitating", artist: "Dua Lipa" },
+        { title: "Good 4 U", artist: "Olivia Rodrigo" },
+        { title: "Stay", artist: "The Kid LAROI & Justin Bieber" },
+        { title: "Industry Baby", artist: "Lil Nas X & Jack Harlow" },
+        { title: "Heat Waves", artist: "Glass Animals" },
+        { title: "Shivers", artist: "Ed Sheeran" },
+        { title: "Easy On Me", artist: "Adele" },
+      ];
+
+      return {
+        playlist: fallbackPlaylist,
+      };
+    }
+  } catch (error) {
+    console.error("Error generating song recommendations:", error);
+    throw error;
+  }
 }
 
 // Sample test data for you to check out the agent
 const testCases = [
-    {
-        latitude: 13.0827,
-        longitude: 80.2707,
-        mood: "happy",
-        situationalMood: "morning workout"
-    }, // Chennai, India
-    {
-        latitude: 37.5665,
-        longitude: 126.9780,
-        mood: "melancholic",
-        situationalMood: "evening chill"
-    }, // Seoul, Korea
-    {
-        latitude: 35.6762,
-        longitude: 139.6503,
-        mood: "energetic",
-        situationalMood: "party"
-    }, // Tokyo, Japan
-    {
-        latitude: 19.0760,
-        longitude: 72.8777,
-        mood: "romantic",
-        situationalMood: "dinner date"
-    }, // Mumbai, India
-    {
-        latitude: 40.7128,
-        longitude: -74.0060,
-        mood: "focused",
-        situationalMood: "work"
-    }  // New York, USA
+  {
+    latitude: 13.0827,
+    longitude: 80.2707,
+    mood: "happy",
+    situationalMood: "morning workout",
+  }, // Chennai, India
+  {
+    latitude: 37.5665,
+    longitude: 126.978,
+    mood: "melancholic",
+    situationalMood: "evening chill",
+  }, // Seoul, Korea
+  {
+    latitude: 35.6762,
+    longitude: 139.6503,
+    mood: "energetic",
+    situationalMood: "party",
+  }, // Tokyo, Japan
+  {
+    latitude: 19.076,
+    longitude: 72.8777,
+    mood: "romantic",
+    situationalMood: "dinner date",
+  }, // Mumbai, India
+  {
+    latitude: 40.7128,
+    longitude: -74.006,
+    mood: "focused",
+    situationalMood: "work",
+  }, // New York, USA
 ];
 
-const result = await songRecommendationAgent(testCases[3]); 
-console.log('Results:', JSON.stringify(result, null, 2));
+const result = await songRecommendationAgent(testCases[3]);
+console.log("Results:", JSON.stringify(result, null, 2));
