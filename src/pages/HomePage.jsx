@@ -251,7 +251,10 @@ const HomePage = () => {
   }
 
   const handleLocationChange = (lat, lng) => {
-    setSelectedLocation({ lat, lng })
+    console.log('Location changed:', { lat, lng });
+    setSelectedLocation({ lat, lng });
+    // Clear weather data when location changes to force re-fetch
+    setWeatherData(null);
   }
 
   const handleMoodChange = (mood) => {

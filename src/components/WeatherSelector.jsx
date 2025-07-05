@@ -14,10 +14,17 @@ const WeatherSelector = ({ latitude, longitude, onWeatherData }) => {
     // Prevent fetching if coordinates are missing
     if (!lat || !lon) return
 
-    // Check if we've fetched recently (within last 5 minutes)
+    // Only check cache if we're fetching for the same location
     const now = Date.now()
     if (now - lastFetchRef.current < 5 * 60 * 1000 && weather) {
-      return
+      // Check if coordinates have changed significantly (more than 1km)
+      const latDiff = Math.abs(lat - (weather.coord?.lat || 0))
+      const lonDiff = Math.abs(lon - (weather.coord?.lon || 0))
+      
+      // If coordinates haven't changed significantly, use cache
+      if (latDiff < 0.01 && lonDiff < 0.01) {
+        return
+      }
     }
 
     setLoading(true)
@@ -54,19 +61,11 @@ const WeatherSelector = ({ latitude, longitude, onWeatherData }) => {
       return
     }
 
-    // Fetch immediately if we don't have weather data
-    if (!weather) {
-      fetchWeather(latitude, longitude)
-    } else {
-      // Otherwise, check if we need to update based on time
-      const now = Date.now()
-      if (now - lastFetchRef.current >= 5 * 60 * 1000) {
-        fetchWeather(latitude, longitude)
-      }
-    }
+    // Always fetch when coordinates change, regardless of cache
+    fetchWeather(latitude, longitude)
 
     // No need for cleanup since we're not using timeouts anymore
-  }, [latitude, longitude, weather]) // Include weather in dependencies to handle updates
+  }, [latitude, longitude]) // Remove weather from dependencies to prevent loops
 
   const getWeatherIcon = (iconCode) => {
     const iconMap = {

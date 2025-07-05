@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 
 const WeatherAnimation = ({ weatherData }) => {
   const [particles, setParticles] = useState([])
@@ -63,10 +63,13 @@ const WeatherAnimation = ({ weatherData }) => {
     return { type: 'clear', intensity: 0 }
   }
 
-  const weatherType = getWeatherType()
   const windSpeed = weatherData?.wind?.speed || 0
 
-  console.log('WeatherAnimation: Detected weather type:', weatherType)
+  // Calculate weather type whenever weatherData changes
+  const currentWeatherType = useMemo(() => getWeatherType(), [weatherData])
+
+  console.log('WeatherAnimation: Detected weather type:', currentWeatherType)
+  console.log('WeatherAnimation: Raw weather data:', weatherData)
 
   useEffect(() => {
     if (!weatherData || !containerRef.current) {
@@ -81,6 +84,9 @@ const WeatherAnimation = ({ weatherData }) => {
       return
     }
 
+    console.log('Weather data changed:', weatherData)
+    console.log('Current weather type:', currentWeatherType)
+
     const container = containerRef.current
     const containerWidth = container.offsetWidth
     const containerHeight = container.offsetHeight
@@ -89,16 +95,17 @@ const WeatherAnimation = ({ weatherData }) => {
       const newClouds = []
       let cloudCount = 0
       
-      if (weatherType.type === 'cloudy') {
-        // Create proper cloud formations
-        cloudCount = Math.floor(5 * weatherType.intensity) + 3
-      } else if (weatherType.type === 'fog') {
+      if (currentWeatherType.type === 'cloudy') {
+        // Create proper cloud formations - ensure minimum visibility
+        cloudCount = Math.max(Math.floor(5 * currentWeatherType.intensity) + 3, 6)
+        console.log('Creating cloudy weather clouds:', { intensity: currentWeatherType.intensity, count: cloudCount })
+      } else if (currentWeatherType.type === 'fog') {
         cloudCount = 4
-      } else if (weatherType.type === 'thunderstorm') {
+      } else if (currentWeatherType.type === 'thunderstorm') {
         cloudCount = 3
       }
 
-      console.log('Creating animated clouds:', { type: weatherType.type, intensity: weatherType.intensity, count: cloudCount })
+      console.log('Creating animated clouds:', { type: currentWeatherType.type, intensity: currentWeatherType.intensity, count: cloudCount })
 
       for (let i = 0; i < cloudCount; i++) {
         const cloud = {
@@ -106,7 +113,7 @@ const WeatherAnimation = ({ weatherData }) => {
           left: Math.random() * containerWidth,
           top: Math.random() * (containerHeight * 0.3),
           size: Math.random() * 300 + 200,
-          opacity: Math.random() * 0.4 + 0.3,
+          opacity: currentWeatherType.type === 'cloudy' ? Math.random() * 0.3 + 0.5 : Math.random() * 0.4 + 0.3,
           animationDuration: Math.random() * 80 + 120,
           animationDelay: Math.random() * 40,
           cloudType: Math.random() > 0.5 ? 'cumulus' : 'stratus'
@@ -119,8 +126,8 @@ const WeatherAnimation = ({ weatherData }) => {
     const createRealisticRain = () => {
       const newRainDrops = []
       // Only create rain for rain, drizzle, and thunderstorm weather types
-      if (weatherType.type === 'rain' || weatherType.type === 'drizzle' || weatherType.type === 'thunderstorm') {
-        const dropCount = Math.floor(200 * weatherType.intensity) + 50
+      if (currentWeatherType.type === 'rain' || currentWeatherType.type === 'drizzle' || currentWeatherType.type === 'thunderstorm') {
+        const dropCount = Math.floor(200 * currentWeatherType.intensity) + 50
 
         for (let i = 0; i < dropCount; i++) {
           const drop = {
@@ -142,8 +149,8 @@ const WeatherAnimation = ({ weatherData }) => {
     const createRealisticSnow = () => {
       const newSnowflakes = []
       // Only create snow for snow weather type
-      if (weatherType.type === 'snow') {
-        const flakeCount = Math.floor(150 * weatherType.intensity) + 30
+      if (currentWeatherType.type === 'snow') {
+        const flakeCount = Math.floor(150 * currentWeatherType.intensity) + 30
 
         for (let i = 0; i < flakeCount; i++) {
           const flake = {
@@ -165,8 +172,8 @@ const WeatherAnimation = ({ weatherData }) => {
 
     const createRealisticLightning = () => {
       const newLightning = []
-      if (weatherType.type === 'thunderstorm') {
-        const lightningCount = Math.floor(2 * weatherType.intensity) + 1
+      if (currentWeatherType.type === 'thunderstorm') {
+        const lightningCount = Math.floor(2 * currentWeatherType.intensity) + 1
         for (let i = 0; i < lightningCount; i++) {
           const lightning = {
             id: i,
@@ -186,7 +193,7 @@ const WeatherAnimation = ({ weatherData }) => {
 
     const createRealisticFog = () => {
       const newFogLayers = []
-      if (weatherType.type === 'fog') {
+      if (currentWeatherType.type === 'fog') {
         const layerCount = 3
         for (let i = 0; i < layerCount; i++) {
           const layer = {
@@ -225,7 +232,7 @@ const WeatherAnimation = ({ weatherData }) => {
 
     const createRealisticSun = () => {
       const newSunRays = []
-      if (weatherType.type === 'clear') {
+      if (currentWeatherType.type === 'clear') {
         // No rays or light shafts - just natural atmospheric lighting
         // The sunny effect will be created purely through gradients and glows
       }
@@ -251,24 +258,24 @@ const WeatherAnimation = ({ weatherData }) => {
     }, 8000)
 
     return () => clearInterval(interval)
-  }, [weatherData, weatherType, windSpeed])
+  }, [weatherData, currentWeatherType, windSpeed])
 
   if (!weatherData) return null
 
   return (
     <div ref={containerRef} className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
       {/* Weather overlay for atmosphere */}
-      {weatherType.type !== 'clear' && (
+      {currentWeatherType.type !== 'clear' && (
         <div className={`absolute inset-0 ${getAtmosphericOverlay()}`}></div>
       )}
       
       {/* Additional cloudy atmosphere for overcast conditions */}
-      {weatherType.type === 'cloudy' && (
-        <div className="absolute inset-0 bg-gradient-to-b from-gray-400/20 via-gray-300/15 to-gray-500/25"></div>
+      {currentWeatherType.type === 'cloudy' && (
+        <div className="absolute inset-0 bg-gradient-to-b from-gray-400/30 via-gray-300/25 to-gray-500/35"></div>
       )}
       
       {/* Additional cloudy atmosphere layers */}
-      {weatherType.type === 'cloudy' && (
+      {currentWeatherType.type === 'cloudy' && (
         <>
           <div className="absolute inset-0 bg-gradient-to-r from-gray-300/10 via-transparent to-gray-400/15"></div>
           <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-gray-200/15 to-transparent"></div>
@@ -276,7 +283,7 @@ const WeatherAnimation = ({ weatherData }) => {
       )}
       
       {/* Realistic sun for clear weather */}
-      {weatherType.type === 'clear' && (
+      {currentWeatherType.type === 'clear' && (
         <div className="absolute inset-0">
           {/* Natural sunny atmosphere overlay */}
           <div className="absolute inset-0 bg-gradient-to-br from-yellow-50/30 via-white/20 to-yellow-100/25"></div>
@@ -325,7 +332,7 @@ const WeatherAnimation = ({ weatherData }) => {
         >
           {/* Animated cloud shape with morphing */}
           <div 
-            className={`w-full h-full rounded-full blur-md ${weatherType.type === 'cloudy' ? 'bg-gradient-radial from-white/60 to-white/25' : 'bg-gradient-radial from-white/50 to-white/20'}`}
+            className={`w-full h-full rounded-full blur-md ${currentWeatherType.type === 'cloudy' ? 'bg-gradient-radial from-white/60 to-white/25' : 'bg-gradient-radial from-white/50 to-white/20'}`}
             style={{
               animation: `cloud-morph ${cloud.animationDuration}s ease-in-out ${cloud.animationDelay}s infinite`
             }}
@@ -342,7 +349,7 @@ const WeatherAnimation = ({ weatherData }) => {
       ))}
       
       {/* Animated cloud formations for overcast */}
-      {weatherType.type === 'cloudy' && clouds.length > 0 && (
+      {currentWeatherType.type === 'cloudy' && clouds.length > 0 && (
         <div className="absolute inset-0">
           {clouds.slice(0, Math.floor(clouds.length * 0.6)).map((cloud) => (
             <div
@@ -442,7 +449,7 @@ const WeatherAnimation = ({ weatherData }) => {
   )
 
   function getAtmosphericOverlay() {
-    switch (weatherType.type) {
+    switch (currentWeatherType.type) {
       case 'rain':
         return 'bg-gradient-to-b from-blue-900/5 to-blue-800/10 backdrop-blur-[0.5px]'
       case 'snow':
@@ -452,7 +459,7 @@ const WeatherAnimation = ({ weatherData }) => {
       case 'fog':
         return 'bg-gradient-to-b from-gray-500/8 to-gray-400/12 backdrop-blur-[2px]'
       case 'cloudy':
-        return 'bg-gradient-to-b from-gray-400/5 to-gray-300/8 backdrop-blur-[0.5px]'
+        return 'bg-gradient-to-b from-gray-400/15 to-gray-300/20 backdrop-blur-[1px]'
       default:
         return ''
     }
