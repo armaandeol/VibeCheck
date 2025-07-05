@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import SpotifySection from './SpotifySection';
 import SpotifyService from '../lib/spotify';
+import { supabase } from '../lib/supabase';
 
 const Profile = ({ isSpotifyConnected, spotifyProfile, spotifyTopArtists, spotifyTopTracks }) => {
   const { user, userProfile, updateProfile, updateTopArtists, updateTopSongs, addFriend, removeFriend, getFriends, searchUserByEmail, refreshProfile } = useAuth();
@@ -28,7 +29,17 @@ const Profile = ({ isSpotifyConnected, spotifyProfile, spotifyTopArtists, spotif
 
   useEffect(() => {
     loadFriends();
-  }, []);
+    if (!user) return;
+    // Real-time subscription for friends table
+    const subscription = supabase
+      .channel('profile_friends')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friends', filter: `user_id=eq.${user.id}` }, loadFriends)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friends', filter: `friend_id=eq.${user.id}` }, loadFriends)
+      .subscribe();
+    return () => {
+      if (subscription) supabase.removeChannel(subscription);
+    };
+  }, [user]);
 
   const loadFriends = async () => {
     try {
@@ -65,15 +76,14 @@ const Profile = ({ isSpotifyConnected, spotifyProfile, spotifyTopArtists, spotif
   const handleAddFriend = async (e) => {
     e.preventDefault();
     if (!friendEmail.trim()) return;
-    
     setLoading(true);
+    setMessage('');
     try {
       const { error } = await addFriend(friendEmail.trim());
-      
       if (error) {
         setMessage(`Error adding friend: ${error.message}`);
       } else {
-        setMessage('Friend added successfully!');
+        setMessage('Friend request sent!');
         setFriendEmail('');
         await loadFriends();
       }
@@ -81,14 +91,15 @@ const Profile = ({ isSpotifyConnected, spotifyProfile, spotifyTopArtists, spotif
       setMessage(`Error adding friend: ${error.message}`);
     } finally {
       setLoading(false);
+      setTimeout(() => setMessage(''), 4000);
     }
   };
 
   const handleRemoveFriend = async (friendId) => {
     setLoading(true);
+    setMessage('');
     try {
       const { error } = await removeFriend(friendId);
-      
       if (error) {
         setMessage(`Error removing friend: ${error.message}`);
       } else {
@@ -99,6 +110,7 @@ const Profile = ({ isSpotifyConnected, spotifyProfile, spotifyTopArtists, spotif
       setMessage(`Error removing friend: ${error.message}`);
     } finally {
       setLoading(false);
+      setTimeout(() => setMessage(''), 4000);
     }
   };
 
@@ -369,9 +381,9 @@ const Profile = ({ isSpotifyConnected, spotifyProfile, spotifyTopArtists, spotif
                 <button
                   type="submit"
                   disabled={loading}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors duration-300 disabled:opacity-50"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors duration-300 disabled:opacity-50 flex items-center gap-2"
                 >
-                  {loading ? 'Adding...' : 'Add Friend'}
+                  {loading ? <span className="spinner w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> : 'Add Friend'}
                 </button>
               </div>
             </form>
@@ -396,9 +408,10 @@ const Profile = ({ isSpotifyConnected, spotifyProfile, spotifyTopArtists, spotif
                     </div>
                     <button
                       onClick={() => handleRemoveFriend(friend.friend_id)}
-                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg transition-colors duration-300 text-sm"
+                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg transition-colors duration-300 text-sm disabled:opacity-50"
+                      disabled={loading}
                     >
-                      Remove
+                      {loading ? <span className="spinner w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> : 'Remove'}
                     </button>
                   </div>
                 ))

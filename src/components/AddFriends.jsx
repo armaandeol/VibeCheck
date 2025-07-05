@@ -3,13 +3,15 @@ import { useAuth } from '../hooks/useAuth.jsx'
 import { supabase } from '../lib/supabase.js'
 
 const AddFriends = ({ isOpen, onClose }) => {
-  const { user, acceptFriendRequest, rejectFriendRequest } = useAuth()
+  const { user, addFriend, removeFriend, acceptFriendRequest, rejectFriendRequest } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [pendingRequests, setPendingRequests] = useState([])
   const [sentRequests, setSentRequests] = useState([])
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('search') // 'search', 'pending', 'sent'
+  const [message, setMessage] = useState('')
+  const [actionLoading, setActionLoading] = useState(false)
 
   // Search for users by email
   const searchUsers = async (query) => {
@@ -43,64 +45,84 @@ const AddFriends = ({ isOpen, onClose }) => {
     }
   }
 
-  // Send friend request
-  const sendFriendRequest = async (friendId) => {
+  // Send friend request (robust)
+  const sendFriendRequest = async (friendEmail) => {
+    setActionLoading(true)
+    setMessage('')
     try {
-      const { error } = await supabase
-        .from('friends')
-        .insert({
-          user_id: user?.id,
-          friend_id: friendId,
-          status: 'pending'
-        })
-
-      if (!error) {
-        // Remove from search results and add to sent requests
-        setSearchResults(prev => prev.filter(result => result.id !== friendId))
+      const { error } = await addFriend(friendEmail)
+      if (error) {
+        setMessage(`Error: ${error.message}`)
+      } else {
+        setMessage('Friend request sent!')
+        setSearchResults(prev => prev.filter(result => result.email !== friendEmail))
         fetchSentRequests()
       }
     } catch (err) {
-      console.error('Error sending friend request:', err)
+      setMessage('Error sending friend request.')
+    } finally {
+      setActionLoading(false)
+      setTimeout(() => setMessage(''), 4000)
     }
   }
 
   // Accept friend request
   const handleAcceptFriendRequest = async (requestId) => {
+    setActionLoading(true)
+    setMessage('')
     try {
       const { error } = await acceptFriendRequest(requestId)
-      if (!error) {
+      if (error) {
+        setMessage(`Error: ${error.message}`)
+      } else {
+        setMessage('Friend request accepted!')
         fetchPendingRequests()
       }
     } catch (err) {
-      console.error('Error accepting friend request:', err)
+      setMessage('Error accepting friend request.')
+    } finally {
+      setActionLoading(false)
+      setTimeout(() => setMessage(''), 4000)
     }
   }
 
   // Reject friend request
   const handleRejectFriendRequest = async (requestId) => {
+    setActionLoading(true)
+    setMessage('')
     try {
       const { error } = await rejectFriendRequest(requestId)
-      if (!error) {
+      if (error) {
+        setMessage(`Error: ${error.message}`)
+      } else {
+        setMessage('Friend request rejected.')
         fetchPendingRequests()
       }
     } catch (err) {
-      console.error('Error rejecting friend request:', err)
+      setMessage('Error rejecting friend request.')
+    } finally {
+      setActionLoading(false)
+      setTimeout(() => setMessage(''), 4000)
     }
   }
 
-  // Cancel sent request
-  const cancelSentRequest = async (requestId) => {
+  // Cancel sent request (removeFriend)
+  const cancelSentRequest = async (friendId) => {
+    setActionLoading(true)
+    setMessage('')
     try {
-      const { error } = await supabase
-        .from('friends')
-        .delete()
-        .eq('id', requestId)
-
-      if (!error) {
+      const { error } = await removeFriend(friendId)
+      if (error) {
+        setMessage(`Error: ${error.message}`)
+      } else {
+        setMessage('Friend request canceled.')
         fetchSentRequests()
       }
     } catch (err) {
-      console.error('Error canceling friend request:', err)
+      setMessage('Error canceling friend request.')
+    } finally {
+      setActionLoading(false)
+      setTimeout(() => setMessage(''), 4000)
     }
   }
 
@@ -158,6 +180,21 @@ const AddFriends = ({ isOpen, onClose }) => {
     if (isOpen && user) {
       fetchPendingRequests()
       fetchSentRequests()
+      // Real-time subscription for friend requests
+      const subscription = supabase
+        .channel('addfriends_friends')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'friends', filter: `user_id=eq.${user.id}` }, () => {
+          fetchPendingRequests()
+          fetchSentRequests()
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'friends', filter: `friend_id=eq.${user.id}` }, () => {
+          fetchPendingRequests()
+          fetchSentRequests()
+        })
+        .subscribe();
+      return () => {
+        if (subscription) supabase.removeChannel(subscription)
+      }
     }
   }, [isOpen, user])
 
@@ -256,10 +293,11 @@ const AddFriends = ({ isOpen, onClose }) => {
                     </div>
                   </div>
                   <button
-                    onClick={() => sendFriendRequest(user.id)}
-                    className="bg-green-500 hover:bg-green-600 text-black px-3 py-1 rounded-full text-sm font-medium transition-colors"
+                    onClick={() => sendFriendRequest(user.email)}
+                    className="bg-green-500 hover:bg-green-600 text-black px-3 py-1 rounded-full text-sm font-medium transition-colors disabled:opacity-50"
+                    disabled={actionLoading}
                   >
-                    Add
+                    {actionLoading ? <span className="spinner w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> : 'Add'}
                   </button>
                 </div>
               ))}
@@ -289,15 +327,17 @@ const AddFriends = ({ isOpen, onClose }) => {
                     <div className="flex space-x-2">
                       <button
                         onClick={() => handleAcceptFriendRequest(request.id)}
-                        className="bg-green-500 hover:bg-green-600 text-black px-3 py-1 rounded-full text-sm font-medium transition-colors"
+                        className="bg-green-500 hover:bg-green-600 text-black px-3 py-1 rounded-full text-sm font-medium transition-colors disabled:opacity-50"
+                        disabled={actionLoading}
                       >
-                        Accept
+                        {actionLoading ? <span className="spinner w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> : 'Accept'}
                       </button>
                       <button
                         onClick={() => handleRejectFriendRequest(request.id)}
-                        className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-full text-sm font-medium transition-colors"
+                        className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-full text-sm font-medium transition-colors disabled:opacity-50"
+                        disabled={actionLoading}
                       >
-                        Reject
+                        {actionLoading ? <span className="spinner w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> : 'Reject'}
                       </button>
                     </div>
                   </div>
@@ -327,10 +367,11 @@ const AddFriends = ({ isOpen, onClose }) => {
                       </div>
                     </div>
                     <button
-                      onClick={() => cancelSentRequest(request.id)}
-                      className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded-full text-sm font-medium transition-colors"
+                      onClick={() => cancelSentRequest(request.friend.id)}
+                      className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded-full text-sm font-medium transition-colors disabled:opacity-50"
+                      disabled={actionLoading}
                     >
-                      Cancel
+                      {actionLoading ? <span className="spinner w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> : 'Cancel'}
                     </button>
                   </div>
                 ))
@@ -338,6 +379,11 @@ const AddFriends = ({ isOpen, onClose }) => {
             </div>
           )}
         </div>
+
+        {/* Show message */}
+        {message && (
+          <div className={`p-3 text-center rounded-lg mb-2 ${message.startsWith('Error') ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'}`}>{message}</div>
+        )}
       </div>
     </div>
   )
