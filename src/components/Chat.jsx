@@ -334,30 +334,71 @@ const Chat = ({ selectedFriend: initialFriend, onClose }) => {
 
   // Debug function to test database connectivity
   const testChatFunctionality = async () => {
-    if (!user) return;
+    console.log('Testing chat functionality...');
     
     try {
-      console.log('Testing chat functionality for user:', user.id);
+      // Test 1: Check if user is authenticated
+      console.log('Current user:', user);
+      if (!user) {
+        console.error('No user authenticated');
+        return;
+      }
+
+      // Test 2: Check if chat_rooms table exists
+      const { data: roomsTest, error: roomsError } = await supabase
+        .from('chat_rooms')
+        .select('count')
+        .limit(1);
       
-      // Test friends
-      const { data: friendsData, error: friendsError } = await getFriends();
-      console.log('Friends test:', { data: friendsData, error: friendsError });
+      console.log('Chat rooms table test:', { data: roomsTest, error: roomsError });
+
+      // Test 3: Check if chat_messages table exists
+      const { data: messagesTest, error: messagesError } = await supabase
+        .from('chat_messages')
+        .select('count')
+        .limit(1);
       
-      // Test chat rooms
-      const { data: roomsData, error: roomsError } = await supabase
-        .from('chat_participants')
-        .select('chat_room_id')
-        .eq('user_id', user.id);
-      console.log('Chat rooms test:', { data: roomsData, error: roomsError });
+      console.log('Chat messages table test:', { data: messagesTest, error: messagesError });
+
+      // Test 4: Check if friends table exists and user has friends
+      const { data: friendsTest, error: friendsError } = await supabase
+        .from('friends')
+        .select('*')
+        .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`)
+        .eq('status', 'accepted');
       
-      // Test database function
-      const { data: testData, error: testError } = await supabase.rpc('test_chat_functionality', { user_uuid: user.id });
-      console.log('Database test:', { data: testData, error: testError });
+      console.log('Friends test:', { data: friendsTest, error: friendsError });
+
+      // Test 5: Test RPC function
+      try {
+        const { data: rpcTest, error: rpcError } = await supabase.rpc('get_user_friends', {
+          user_uuid: user.id
+        });
+        console.log('RPC function test:', { data: rpcTest, error: rpcError });
+      } catch (rpcErr) {
+        console.error('RPC function error:', rpcErr);
+      }
+
+      // Test 6: Test profiles table
+      const { data: profilesTest, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .limit(1);
       
+      console.log('Profiles table test:', { data: profilesTest, error: profilesError });
+
+      // Test 7: Test getFriends function from useAuth
+      try {
+        const { data: authFriendsTest, error: authFriendsError } = await getFriends();
+        console.log('useAuth getFriends test:', { data: authFriendsTest, error: authFriendsError });
+      } catch (authErr) {
+        console.error('useAuth getFriends error:', authErr);
+      }
+
     } catch (error) {
-      console.error('Debug test error:', error);
+      console.error('Chat functionality test failed:', error);
     }
-  };
+  }
 
   // Manual refresh function for debugging
   const manualRefreshMessages = async () => {
