@@ -10,6 +10,9 @@ import spotifyService from '../lib/spotify.js'
 import SpotifyCard from '../components/SpotifyCard'
 import SpotifyButton from '../components/SpotifyButton'
 import SpotifySection from '../components/SpotifySection'
+import { AnimatedList } from '../components/Animatedlist'
+import { motion, AnimatePresence } from 'framer-motion';
+import Footer from '../components/Footer'
 
 const featureList = [
   {
@@ -41,6 +44,73 @@ const featureList = [
     )
   },
 ]
+
+const LoadingPlaylist = ({ songs }) => {
+  if (!songs || !songs.length) return null;
+  
+  const containerVariants = {
+    hidden: { 
+      opacity: 0,
+      y: 20
+    },
+    visible: { 
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.6,
+        ease: "easeOut"
+      }
+    },
+    exit: {
+      opacity: 0,
+      y: -20,
+      transition: {
+        duration: 0.4,
+        ease: "easeIn"
+      }
+    }
+  };
+  
+  // Take only the first 5 songs
+  const displaySongs = songs.slice(0, 5);
+  
+  return (
+    <motion.div
+      className="w-full max-w-md mx-auto mt-6"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      exit="exit"
+    >
+      <div className="bg-gray-900/40 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-gray-700/30">
+        <h3 className="text-xl font-semibold text-center mb-6 text-purple-400/90">
+          Generating Your Playlist... 🎵
+        </h3>
+        <AnimatedList delay={800}>
+          {displaySongs.map((song, index) => (
+            <motion.div
+              key={`${song.title}-${index}`}
+              className="bg-gray-800/30 p-4 rounded-lg shadow-md border border-gray-700/30 w-full relative group"
+              whileHover={{ scale: 1.02 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="flex items-center gap-3 relative">
+                <div className="text-2xl">🎵</div>
+                <div className="flex-1">
+                  <p className="font-medium text-gray-200/90">{song.title}</p>
+                  <p className="text-sm text-gray-400/80">{song.artist}</p>
+                </div>
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <span className="text-purple-400/60">#{index + 1}</span>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatedList>
+      </div>
+    </motion.div>
+  );
+};
 
 const HomePage = () => {
   const { user } = useAuth()
@@ -366,6 +436,62 @@ const HomePage = () => {
               'Create Spotify Playlist'
             )}
           </SpotifyButton>
+
+          {/* Loading Animation with AnimatePresence */}
+          <AnimatePresence mode="wait">
+            {isLoadingPlaylist && playlist?.playlist && !spotifyPlaylistResult && (
+              <LoadingPlaylist songs={playlist.playlist} />
+            )}
+          </AnimatePresence>
+
+          {/* Success Message with AnimatePresence */}
+          <AnimatePresence mode="wait">
+            {spotifyPlaylistResult && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.5 }}
+              >
+                <SpotifyCard className="mt-8 bg-green-900/20 border-green-800">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+                      <span className="text-2xl">✓</span>
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold">Playlist Created!</h3>
+                      <p className="text-gray-400">{spotifyPlaylistResult.playlistName}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4 mb-6 text-sm">
+                    <div>
+                      <div className="text-gray-400">Total Songs</div>
+                      <div className="font-semibold">{spotifyPlaylistResult.totalSongs}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-400">Found on Spotify</div>
+                      <div className="font-semibold text-green-400">{spotifyPlaylistResult.foundSongs}</div>
+                    </div>
+                    {spotifyPlaylistResult.notFoundSongs > 0 && (
+                      <div>
+                        <div className="text-gray-400">Not Found</div>
+                        <div className="font-semibold text-yellow-400">{spotifyPlaylistResult.notFoundSongs}</div>
+                      </div>
+                    )}
+                  </div>
+                  <a
+                    href={spotifyPlaylistResult.playlistUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-green-500 hover:bg-green-600 text-black px-6 py-3 rounded-full font-semibold transition-colors inline-flex items-center gap-2"
+                  >
+                    <span>🎵</span>
+                    Open in Spotify
+                  </a>
+                </SpotifyCard>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Error Messages */}
@@ -385,47 +511,12 @@ const HomePage = () => {
             </div>
           </SpotifyCard>
         )}
-        {/* Success Message */}
-        {spotifyPlaylistResult && (
-          <SpotifyCard className="mt-8 bg-green-900/20 border-green-800">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
-                <span className="text-2xl">✓</span>
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold">Playlist Created!</h3>
-                <p className="text-gray-400">{spotifyPlaylistResult.playlistName}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4 mb-6 text-sm">
-              <div>
-                <div className="text-gray-400">Total Songs</div>
-                <div className="font-semibold">{spotifyPlaylistResult.totalSongs}</div>
-              </div>
-              <div>
-                <div className="text-gray-400">Found on Spotify</div>
-                <div className="font-semibold text-green-400">{spotifyPlaylistResult.foundSongs}</div>
-              </div>
-              {spotifyPlaylistResult.notFoundSongs > 0 && (
-                <div>
-                  <div className="text-gray-400">Not Found</div>
-                  <div className="font-semibold text-yellow-400">{spotifyPlaylistResult.notFoundSongs}</div>
-                </div>
-              )}
-            </div>
-            <a 
-              href={spotifyPlaylistResult.playlistUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-green-500 hover:bg-green-600 text-black px-6 py-3 rounded-full font-semibold transition-colors inline-flex items-center gap-2"
-            >
-              <span>🎵</span>
-              Open in Spotify
-            </a>
-          </SpotifyCard>
-        )}
       </div>
-      {/* Floating Chat Popup */}
+      
+      {/* Add Footer at the bottom */}
+      <Footer />
+      
+      {/* Keep the chat popup outside the main content */}
       {showChat && (
         <Chat
           selectedFriend={null}
