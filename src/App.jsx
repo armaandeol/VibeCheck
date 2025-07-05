@@ -11,6 +11,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import PublicRoute from './components/PublicRoute'
 import RootRoute from './components/RootRoute'
 import SpotifyCallback from './components/SpotifyCallback'
+import AuthCallback from './components/AuthCallback'
 
 function App() {
   return (
@@ -68,6 +69,10 @@ function App() {
                   <Footer />
                 </>
               } 
+            />
+            <Route 
+              path="/auth/callback" 
+              element={<AuthCallback />} 
             />
             <Route path="*" element={
               <>
