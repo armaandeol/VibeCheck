@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth.jsx'
 import Chat from '../components/Chat'
+import Profile from '../components/Profile'
 
 const musicPersonality = {
   primaryGenre: 'Indie Rock',
@@ -26,7 +27,7 @@ const recentActivity = [
 const ProfilePage = () => {
   const { user } = useAuth()
   const [showChat, setShowChat] = useState(false)
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState('profile')
   const [animatedStats, setAnimatedStats] = useState({ playlists: 0, tracks: 0, friends: 0 })
 
   useEffect(() => {
@@ -153,7 +154,7 @@ const ProfilePage = () => {
 
         {/* Tab Navigation */}
         <div className="flex space-x-1 mb-8 bg-slate-800/50 rounded-xl p-1">
-          {['overview', 'activity'].map((tab) => (
+          {['profile', 'overview', 'activity'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -170,6 +171,13 @@ const ProfilePage = () => {
 
         {/* Tab Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Profile Tab */}
+          {activeTab === 'profile' && (
+            <div className="lg:col-span-3">
+              <Profile />
+            </div>
+          )}
+
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <>
