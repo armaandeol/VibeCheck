@@ -14,6 +14,7 @@ const Chat = ({ selectedFriend: initialFriend, onClose }) => {
   const messagesEndRef = useRef(null)
 
   // Use the chat hook for real-time functionality
+  const roomId = typeof currentChatRoom === 'string' ? currentChatRoom : currentChatRoom?.id;
   const {
     messages,
     chatRooms,
@@ -23,7 +24,13 @@ const Chat = ({ selectedFriend: initialFriend, onClose }) => {
     createDirectMessage,
     getUnreadCount,
     markAsRead
-  } = useChat(currentChatRoom?.id)
+  } = useChat(roomId)
+
+  // Debug logging
+  useEffect(() => {
+    console.log('Chat component - currentChatRoom changed:', currentChatRoom);
+    console.log('Chat component - messages state:', messages);
+  }, [currentChatRoom, messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -38,16 +45,24 @@ const Chat = ({ selectedFriend: initialFriend, onClose }) => {
     const fetchFriends = async () => {
       try {
         const { data, error } = await getFriends();
+        console.log('Chat fetchFriends result:', { data, error });
         if (!error && data) {
-          setFriends(data.map(friend => ({
+          // Transform the data to match the expected format
+          const transformedFriends = data.map(friend => ({
             id: friend.friend_id,
             name: friend.friend_name,
             avatar_url: friend.friend_avatar_url,
             email: friend.friend_email
-          })));
+          }));
+          console.log('Transformed friends:', transformedFriends);
+          setFriends(transformedFriends);
+        } else {
+          console.error('Error fetching friends:', error);
+          setFriends([]);
         }
       } catch (err) {
         console.error('Error fetching friends:', err);
+        setFriends([]);
       }
     };
     if (user) {
@@ -60,59 +75,123 @@ const Chat = ({ selectedFriend: initialFriend, onClose }) => {
     console.log('handleFriendSelect called with friend:', friend);
     setSelectedFriend(friend)
     
-    // Check if DM already exists
-    const existingRoom = chatRooms.find(room => 
-      room.is_direct_message && 
-      room.participants.some(p => p.user.id === friend.id)
-    )
+    try {
+      // Try to find existing chat room - simplified approach
+      let existingRoom = null;
+      
+      try {
+        // First try to get rooms created by current user
+        const { data: userRooms, error: userRoomsError } = await supabase
+          .from('chat_rooms')
+          .select(`
+            id,
+            is_direct_message,
+            participants:chat_participants(
+              user_id,
+              user:profiles(id, name, avatar_url)
+            )
+          `)
+          .eq('is_direct_message', true)
+          .eq('created_by', user.id);
 
-    console.log('Existing room found:', existingRoom);
-
-    if (existingRoom) {
-      console.log('Using existing room:', existingRoom.id);
-      setCurrentChatRoom(existingRoom)
-      markAsRead(existingRoom.id)
-    } else {
-      console.log('Creating new DM for friend:', friend.id);
-      // Create new DM
-      const roomId = await createDirectMessage(friend.id)
-      console.log('New room ID:', roomId);
-      if (roomId) {
-        const newRoom = {
-          id: roomId,
-          name: null,
-          is_direct_message: true,
-          participants: [
-            { user: { id: user.id, name: user.name, avatar_url: user.avatar_url } },
-            { user: { id: friend.id, name: friend.name, avatar_url: friend.avatar_url } }
-          ]
+        if (!userRoomsError && userRooms) {
+          console.log('User rooms:', userRooms);
+          
+          // Find room where both users are participants
+          existingRoom = userRooms.find(room => {
+            const participantIds = room.participants?.map(p => p.user_id) || [];
+            return participantIds.includes(friend.id) && participantIds.includes(user.id);
+          });
         }
-        console.log('Setting new room:', newRoom);
-        setCurrentChatRoom(newRoom)
-      } else {
-        console.error('Failed to create new DM');
+      } catch (roomError) {
+        console.warn('Error fetching user rooms, trying alternative:', roomError);
+        
+        // Alternative: Check if friend has any rooms with current user
+        try {
+          const { data: friendRooms, error: friendRoomsError } = await supabase
+            .from('chat_rooms')
+            .select(`
+              id,
+              is_direct_message,
+              participants:chat_participants(
+                user_id,
+                user:profiles(id, name, avatar_url)
+              )
+            `)
+            .eq('is_direct_message', true)
+            .eq('created_by', friend.id);
+
+          if (!friendRoomsError && friendRooms) {
+            console.log('Friend rooms:', friendRooms);
+            
+            existingRoom = friendRooms.find(room => {
+              const participantIds = room.participants?.map(p => p.user_id) || [];
+              return participantIds.includes(friend.id) && participantIds.includes(user.id);
+            });
+          }
+        } catch (friendRoomError) {
+          console.warn('Error fetching friend rooms:', friendRoomError);
+        }
       }
+
+      console.log('Found existing room:', existingRoom);
+
+      if (existingRoom) {
+        console.log('Using existing room:', existingRoom.id);
+        setCurrentChatRoom(existingRoom.id)
+        markAsRead(existingRoom.id)
+      } else {
+        console.log('Creating new DM for friend:', friend.id);
+        // Create new DM
+        const roomId = await createDirectMessage(friend.id)
+        console.log('New room ID:', roomId);
+        if (roomId) {
+          console.log('Setting new room ID:', roomId);
+          setCurrentChatRoom(roomId)
+        } else {
+          console.error('Failed to create new DM');
+        }
+      }
+    } catch (error) {
+      console.error('Error in handleFriendSelect:', error);
     }
   }
 
   const handleSendMessage = async () => {
     console.log('handleSendMessage called:', { 
       newMessage: newMessage.trim(), 
-      currentChatRoom: currentChatRoom?.id,
+      currentChatRoom: currentChatRoom,
       user: user?.id 
     });
     
-    if (newMessage.trim() && currentChatRoom) {
-      const success = await sendMessage(newMessage, currentChatRoom.id)
+    if (!newMessage.trim()) {
+      console.log('Message is empty');
+      return;
+    }
+    
+    // Handle both string ID and object formats
+    const roomId = typeof currentChatRoom === 'string' ? currentChatRoom : currentChatRoom?.id;
+    
+    if (!roomId) {
+      console.log('No current chat room ID');
+      return;
+    }
+    
+    if (!user?.id) {
+      console.log('No user ID');
+      return;
+    }
+    
+    try {
+      const success = await sendMessage(newMessage, roomId)
       console.log('sendMessage result:', success);
       if (success) {
         setNewMessage('')
+      } else {
+        console.error('Failed to send message');
       }
-    } else {
-      console.log('Message validation failed:', { 
-        messageTrimmed: newMessage.trim(), 
-        hasChatRoom: !!currentChatRoom 
-      });
+    } catch (error) {
+      console.error('Error sending message:', error);
     }
   }
 
@@ -253,6 +332,60 @@ const Chat = ({ selectedFriend: initialFriend, onClose }) => {
     )
   }
 
+  // Debug function to test database connectivity
+  const testChatFunctionality = async () => {
+    if (!user) return;
+    
+    try {
+      console.log('Testing chat functionality for user:', user.id);
+      
+      // Test friends
+      const { data: friendsData, error: friendsError } = await getFriends();
+      console.log('Friends test:', { data: friendsData, error: friendsError });
+      
+      // Test chat rooms
+      const { data: roomsData, error: roomsError } = await supabase
+        .from('chat_participants')
+        .select('chat_room_id')
+        .eq('user_id', user.id);
+      console.log('Chat rooms test:', { data: roomsData, error: roomsError });
+      
+      // Test database function
+      const { data: testData, error: testError } = await supabase.rpc('test_chat_functionality', { user_uuid: user.id });
+      console.log('Database test:', { data: testData, error: testError });
+      
+    } catch (error) {
+      console.error('Debug test error:', error);
+    }
+  };
+
+  // Manual refresh function for debugging
+  const manualRefreshMessages = async () => {
+    if (!roomId) {
+      console.log('No room ID for manual refresh');
+      return;
+    }
+    
+    try {
+      console.log('Manual refresh for room:', roomId);
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select(`
+          *,
+          sender:profiles(id, name, avatar_url)
+        `)
+        .eq('chat_room_id', roomId)
+        .order('created_at', { ascending: true });
+      
+      console.log('Manual refresh result:', { data, error });
+    } catch (error) {
+      console.error('Manual refresh error:', error);
+    }
+  };
+
+  // Add debug button in development
+  const isDevelopment = process.env.NODE_ENV === 'development';
+
   // Friends List View
   if (!selectedFriend) {
     return (
@@ -260,37 +393,64 @@ const Chat = ({ selectedFriend: initialFriend, onClose }) => {
         <div className="bg-slate-900 rounded-xl shadow-2xl border border-slate-700 flex flex-col h-[400px]">
           <div className="flex items-center justify-between p-4 border-b border-slate-700 rounded-t-xl bg-slate-800">
             <div className="text-white font-bold text-lg">Friends</div>
-            <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors ml-2">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <div className="flex items-center space-x-2">
+              {isDevelopment && (
+                <button 
+                  onClick={testChatFunctionality}
+                  className="text-xs bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
+                >
+                  Debug
+                </button>
+              )}
+              <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors ml-2">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {loading ? (
               <div className="text-gray-400 text-center py-4">Loading friends...</div>
             ) : friends.length === 0 ? (
-              <div className="text-gray-400 text-center py-4">No friends yet. Start connecting!</div>
+              <div className="text-gray-400 text-center py-4">
+                <div>No friends yet. Start connecting!</div>
+                {isDevelopment && (
+                  <div className="mt-2 text-xs text-red-400">
+                    Debug: Friends array length: {friends.length}
+                  </div>
+                )}
+              </div>
             ) : (
-              friends.map(friend => (
-                <button
-                  key={friend.id}
-                  className="w-full flex items-center space-x-4 bg-slate-800 hover:bg-slate-700 rounded-lg px-4 py-3 transition-colors"
-                  onClick={() => handleFriendSelect(friend)}
-                >
-                  <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
-                    {friend.avatar_url ? (
-                      <img src={friend.avatar_url} alt={friend.name} className="w-full h-full rounded-full object-cover" />
-                    ) : (
-                      friend.name?.charAt(0) || 'F'
-                    )}
+              <>
+                {isDevelopment && (
+                  <div className="text-xs text-green-400 mb-2">
+                    Debug: Found {friends.length} friends
                   </div>
-                  <div className="flex-1 text-left">
-                    <div className="text-white font-semibold">{friend.name || friend.email}</div>
-                    <div className="text-green-400 text-xs">Online</div>
-                  </div>
-                </button>
-              ))
+                )}
+                {friends.map(friend => (
+                  <button
+                    key={friend.id}
+                    className="w-full flex items-center space-x-4 bg-slate-800 hover:bg-slate-700 rounded-lg px-4 py-3 transition-colors"
+                    onClick={() => handleFriendSelect(friend)}
+                  >
+                    <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
+                      {friend.avatar_url ? (
+                        <img src={friend.avatar_url} alt={friend.name} className="w-full h-full rounded-full object-cover" />
+                      ) : (
+                        friend.name?.charAt(0) || 'F'
+                      )}
+                    </div>
+                    <div className="flex-1 text-left">
+                      <div className="text-white font-semibold">{friend.name || friend.email}</div>
+                      <div className="text-green-400 text-xs">Online</div>
+                      {isDevelopment && (
+                        <div className="text-xs text-gray-500">ID: {friend.id}</div>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </>
             )}
           </div>
         </div>
@@ -340,6 +500,14 @@ const Chat = ({ selectedFriend: initialFriend, onClose }) => {
               )}
               {blendLoading ? 'Creating...' : 'Blend'}
             </button>
+            {isDevelopment && (
+              <button 
+                onClick={manualRefreshMessages}
+                className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded"
+              >
+                Refresh
+              </button>
+            )}
             <button 
               onClick={onClose}
               className="text-gray-400 hover:text-white transition-colors ml-2"
@@ -356,13 +524,27 @@ const Chat = ({ selectedFriend: initialFriend, onClose }) => {
           {loading ? (
             <div className="text-gray-400 text-center py-4">Loading messages...</div>
           ) : messages.length === 0 ? (
-            <div className="text-gray-400 text-center py-4">No messages yet. Start the conversation!</div>
+            <div className="text-gray-400 text-center py-4">
+              <div>No messages yet. Start the conversation!</div>
+              {isDevelopment && (
+                <div className="mt-2 text-xs text-red-400">
+                  Debug: Messages array length: {messages.length}, Room ID: {currentChatRoom}
+                </div>
+              )}
+            </div>
           ) : (
-            messages.map((message) => (
-              <div key={message.id} className="animate-fade-in">
-                {renderMessage(message)}
-              </div>
-            ))
+            <>
+              {isDevelopment && (
+                <div className="text-xs text-green-400 mb-2">
+                  Debug: Showing {messages.length} messages for room {currentChatRoom}
+                </div>
+              )}
+              {messages.map((message) => (
+                <div key={message.id} className="animate-fade-in">
+                  {renderMessage(message)}
+                </div>
+              ))}
+            </>
           )}
           <div ref={messagesEndRef} />
         </div>

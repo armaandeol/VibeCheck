@@ -109,6 +109,55 @@ export const profile = {
     return { data: data || [], error };
   },
 
+  // Get all friend relationships (accepted, pending, etc.)
+  async getAllFriendRelationships(userId) {
+    console.log('getAllFriendRelationships called with userId:', userId);
+    const { data, error } = await supabase
+      .from('friends')
+      .select(`
+        id,
+        user_id,
+        friend_id,
+        status,
+        created_at,
+        updated_at,
+        user:profiles!friends_user_id_fkey(id, name, email, avatar_url),
+        friend:profiles!friends_friend_id_fkey(id, name, email, avatar_url)
+      `)
+      .or(`user_id.eq.${userId},friend_id.eq.${userId}`)
+      .order('created_at', { ascending: false });
+    
+    console.log('getAllFriendRelationships database result:', { data, error });
+    
+    if (error) {
+      console.error('getAllFriendRelationships error:', error);
+      return { data: [], error };
+    }
+
+    // Transform the data to include relationship context
+    const transformedData = data.map(relationship => {
+      const isCurrentUserSender = relationship.user_id === userId;
+      const otherUser = isCurrentUserSender ? relationship.friend : relationship.user;
+      
+      return {
+        id: relationship.id,
+        status: relationship.status,
+        created_at: relationship.created_at,
+        updated_at: relationship.updated_at,
+        isCurrentUserSender,
+        other_user: {
+          id: otherUser.id,
+          name: otherUser.name,
+          email: otherUser.email,
+          avatar_url: otherUser.avatar_url
+        }
+      };
+    });
+
+    console.log('getAllFriendRelationships transformed data:', transformedData);
+    return { data: transformedData, error: null };
+  },
+
   // Search users by email (for adding friends)
   async searchUserByEmail(email) {
     const { data, error } = await database.select(
@@ -169,6 +218,16 @@ export const profile = {
     const { data, error } = await supabase
       .from('friends')
       .delete()
+      .eq('id', requestId)
+      .select();
+    return { data, error };
+  },
+
+  // Cancel/withdraw a friend request
+  async cancelFriendRequest(requestId) {
+    const { data, error } = await supabase
+      .from('friends')
+      .update({ status: 'cancelled' })
       .eq('id', requestId)
       .select();
     return { data, error };

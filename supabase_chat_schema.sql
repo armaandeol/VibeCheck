@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS friends (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
     friend_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'blocked')),
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'blocked', 'cancelled')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(user_id, friend_id)
@@ -211,14 +211,9 @@ DROP POLICY IF EXISTS "Users can insert chat participants" ON chat_participants;
 DROP POLICY IF EXISTS "Users can update chat participants" ON chat_participants;
 DROP POLICY IF EXISTS "Users can delete chat participants" ON chat_participants;
 
+-- Simplified policies to avoid infinite recursion
 CREATE POLICY "Users can view chat participants" ON chat_participants
-    FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM chat_participants cp2
-            WHERE cp2.chat_room_id = chat_participants.chat_room_id 
-            AND cp2.user_id::text = auth.uid()::text
-        )
-    );
+    FOR SELECT USING (user_id::text = auth.uid()::text);
 
 CREATE POLICY "Users can insert chat participants" ON chat_participants
     FOR INSERT WITH CHECK (
@@ -230,22 +225,10 @@ CREATE POLICY "Users can insert chat participants" ON chat_participants
     );
 
 CREATE POLICY "Users can update chat participants" ON chat_participants
-    FOR UPDATE USING (
-        EXISTS (
-            SELECT 1 FROM chat_rooms 
-            WHERE chat_rooms.id = chat_participants.chat_room_id 
-            AND chat_rooms.created_by::text = auth.uid()::text
-        )
-    );
+    FOR UPDATE USING (user_id::text = auth.uid()::text);
 
 CREATE POLICY "Users can delete chat participants" ON chat_participants
-    FOR DELETE USING (
-        EXISTS (
-            SELECT 1 FROM chat_rooms 
-            WHERE chat_rooms.id = chat_participants.chat_room_id 
-            AND chat_rooms.created_by::text = auth.uid()::text
-        )
-    );
+    FOR DELETE USING (user_id::text = auth.uid()::text);
 
 -- Chat messages policies
 CREATE POLICY "Users can view messages in their chats" ON chat_messages
@@ -469,5 +452,78 @@ BEGIN
     )
     WHERE (f.user_id = user_uuid OR f.friend_id = user_uuid)
     AND f.status = 'accepted';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Test function to debug chat functionality
+DROP FUNCTION IF EXISTS test_chat_functionality(UUID) CASCADE;
+CREATE OR REPLACE FUNCTION test_chat_functionality(user_uuid UUID)
+RETURNS TABLE (
+    test_name TEXT,
+    result TEXT,
+    details JSONB
+) AS $$
+DECLARE
+    friend_count INTEGER;
+    chat_room_count INTEGER;
+    message_count INTEGER;
+    test_friend_id UUID;
+    test_room_id UUID;
+BEGIN
+    -- Test 1: Check if user has friends
+    SELECT COUNT(*) INTO friend_count
+    FROM friends f
+    WHERE (f.user_id = user_uuid OR f.friend_id = user_uuid)
+    AND f.status = 'accepted';
+    
+    RETURN QUERY SELECT 
+        'Friends Count'::TEXT,
+        friend_count::TEXT,
+        jsonb_build_object('count', friend_count);
+    
+    -- Test 2: Check if user has chat rooms
+    SELECT COUNT(*) INTO chat_room_count
+    FROM chat_participants cp
+    WHERE cp.user_id = user_uuid;
+    
+    RETURN QUERY SELECT 
+        'Chat Rooms Count'::TEXT,
+        chat_room_count::TEXT,
+        jsonb_build_object('count', chat_room_count);
+    
+    -- Test 3: Check if user has messages
+    SELECT COUNT(*) INTO message_count
+    FROM chat_messages cm
+    JOIN chat_participants cp ON cm.chat_room_id = cp.chat_room_id
+    WHERE cp.user_id = user_uuid;
+    
+    RETURN QUERY SELECT 
+        'Messages Count'::TEXT,
+        message_count::TEXT,
+        jsonb_build_object('count', message_count);
+    
+    -- Test 4: Get first friend for testing
+    SELECT 
+        CASE 
+            WHEN f.user_id = user_uuid THEN f.friend_id
+            ELSE f.user_id
+        END INTO test_friend_id
+    FROM friends f
+    WHERE (f.user_id = user_uuid OR f.friend_id = user_uuid)
+    AND f.status = 'accepted'
+    LIMIT 1;
+    
+    IF test_friend_id IS NOT NULL THEN
+        RETURN QUERY SELECT 
+            'First Friend'::TEXT,
+            'Found'::TEXT,
+            jsonb_build_object('friend_id', test_friend_id);
+    ELSE
+        RETURN QUERY SELECT 
+            'First Friend'::TEXT,
+            'Not Found'::TEXT,
+            '{}'::jsonb;
+    END IF;
+    
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER; 

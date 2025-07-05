@@ -12,7 +12,12 @@ export const useChat = (chatRoomId = null) => {
 
   // Fetch messages for a specific chat room
   const fetchMessages = useCallback(async (roomId) => {
-    if (!roomId) return
+    if (!roomId) {
+      console.log('No room ID provided for fetchMessages');
+      return;
+    }
+
+    console.log('Fetching messages for room:', roomId);
 
     try {
       setLoading(true)
@@ -20,14 +25,28 @@ export const useChat = (chatRoomId = null) => {
         .from('chat_messages')
         .select(`
           *,
-          sender:profiles(name, avatar_url)
+          sender:profiles(id, name, avatar_url)
         `)
         .eq('chat_room_id', roomId)
         .order('created_at', { ascending: true })
 
-      if (error) throw error
-      setMessages(data || [])
+      if (error) {
+        console.error('Error fetching messages:', error);
+        throw error;
+      }
+
+      console.log('Fetched messages:', data);
+      
+      // Ensure messages have proper sender information
+      const processedMessages = data?.map(message => ({
+        ...message,
+        sender: message.sender || { id: message.sender_id, name: 'Unknown', avatar_url: null }
+      })) || [];
+      
+      console.log('Processed messages:', processedMessages);
+      setMessages(processedMessages)
     } catch (err) {
+      console.error('Error in fetchMessages:', err);
       setError(err.message)
     } finally {
       setLoading(false)
@@ -40,31 +59,76 @@ export const useChat = (chatRoomId = null) => {
 
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('chat_rooms')
-        .select(`
-          *,
-          participants:chat_participants(
-            user:profiles(id, name, avatar_url)
-          ),
-          last_message:chat_messages(
-            message,
-            created_at,
-            sender:profiles(name)
-          )
-        `)
-        .in('id', 
-          supabase
-            .from('chat_participants')
-            .select('chat_room_id')
-            .eq('user_id', user.id)
-        )
-        .order('updated_at', { ascending: false })
+      console.log('Fetching chat rooms for user:', user.id);
+      
+      // Try the direct approach first
+      try {
+        // First get all chat room IDs where user is a participant
+        const { data: participantRooms, error: participantError } = await supabase
+          .from('chat_participants')
+          .select('chat_room_id')
+          .eq('user_id', user.id);
 
-      if (error) throw error
-      setChatRooms(data || [])
+        if (participantError) {
+          console.error('Error fetching participant rooms:', participantError);
+          throw participantError;
+        }
+
+        if (!participantRooms || participantRooms.length === 0) {
+          console.log('No chat rooms found for user');
+          setChatRooms([]);
+          return;
+        }
+
+        const roomIds = participantRooms.map(p => p.chat_room_id);
+        console.log('Room IDs:', roomIds);
+
+        // Now fetch the actual chat rooms with participants and last message
+        const { data, error } = await supabase
+          .from('chat_rooms')
+          .select(`
+            *,
+            participants:chat_participants(
+              user:profiles(id, name, avatar_url)
+            ),
+            last_message:chat_messages(
+              message,
+              created_at,
+              sender:profiles(name)
+            )
+          `)
+          .in('id', roomIds)
+          .order('updated_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching chat rooms:', error);
+          throw error;
+        }
+        
+        console.log('Fetched chat rooms:', data);
+        setChatRooms(data || [])
+      } catch (directError) {
+        console.warn('Direct approach failed, trying alternative:', directError);
+        
+        // Fallback: Use RPC function or simpler query
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('chat_rooms')
+          .select('*')
+          .eq('created_by', user.id)
+          .order('updated_at', { ascending: false });
+
+        if (fallbackError) {
+          console.error('Fallback approach also failed:', fallbackError);
+          throw fallbackError;
+        }
+
+        console.log('Fallback chat rooms:', fallbackData);
+        setChatRooms(fallbackData || []);
+      }
     } catch (err) {
+      console.error('Error in fetchChatRooms:', err);
       setError(err.message)
+      setChatRooms([])
     } finally {
       setLoading(false)
     }
@@ -74,8 +138,18 @@ export const useChat = (chatRoomId = null) => {
   const sendMessage = useCallback(async (message, roomId = chatRoomId, messageType = 'text', metadata = null) => {
     console.log('sendMessage called with:', { message, roomId, messageType, metadata, user: user?.id });
     
-    if (!user || !roomId || (!message.trim() && messageType === 'text')) {
-      console.log('sendMessage validation failed:', { user: !!user, roomId: !!roomId, messageTrim: message?.trim() });
+    if (!user) {
+      console.error('No user logged in');
+      return null;
+    }
+    
+    if (!roomId) {
+      console.error('No room ID provided');
+      return null;
+    }
+    
+    if (!message.trim() && messageType === 'text') {
+      console.error('Empty message for text type');
       return null;
     }
 
@@ -93,19 +167,60 @@ export const useChat = (chatRoomId = null) => {
 
       console.log('Sending message data:', messageData);
 
+      // Create optimistic message for immediate UI update
+      const optimisticMessage = {
+        id: `temp-${Date.now()}`,
+        ...messageData,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        sender: {
+          id: user.id,
+          name: user.name || user.email,
+          avatar_url: user.avatar_url
+        }
+      };
+
+      // Add optimistic message to UI immediately
+      setMessages(prev => [...prev, optimisticMessage]);
+
       const { data, error } = await supabase
         .from('chat_messages')
         .insert(messageData)
-        .select()
+        .select(`
+          *,
+          sender:profiles(id, name, avatar_url)
+        `)
 
       console.log('Supabase response:', { data, error });
 
-      if (error) throw error
+      if (error) {
+        console.error('Supabase error:', error);
+        // Remove optimistic message on error
+        setMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
+        throw error;
+      }
+      
+      const sentMessage = data?.[0];
+      if (sentMessage) {
+        // Replace optimistic message with real message
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === optimisticMessage.id ? {
+              ...sentMessage,
+              sender: sentMessage.sender || { id: sentMessage.sender_id, name: 'Unknown', avatar_url: null }
+            } : msg
+          )
+        );
+      }
       
       // Update last read timestamp
-      await supabase.rpc('update_last_read', { chat_room_uuid: roomId })
+      try {
+        await supabase.rpc('update_last_read', { chat_room_uuid: roomId });
+      } catch (readError) {
+        console.warn('Failed to update last read:', readError);
+      }
       
-      return data[0]
+      return sentMessage || null;
     } catch (err) {
       console.error('Error sending message:', err);
       setError(err.message)
@@ -115,7 +230,17 @@ export const useChat = (chatRoomId = null) => {
 
   // Create a direct message chat room
   const createDirectMessage = useCallback(async (otherUserId) => {
-    if (!user) return null
+    if (!user) {
+      console.error('No user logged in for createDirectMessage');
+      return null;
+    }
+
+    if (!otherUserId) {
+      console.error('No other user ID provided for createDirectMessage');
+      return null;
+    }
+
+    console.log('Creating direct message between:', user.id, 'and', otherUserId);
 
     try {
       const { data, error } = await supabase.rpc('create_direct_message', {
@@ -123,9 +248,15 @@ export const useChat = (chatRoomId = null) => {
         user2_id: otherUserId
       })
 
-      if (error) throw error
-      return data
+      if (error) {
+        console.error('Error creating direct message:', error);
+        throw error;
+      }
+
+      console.log('Direct message created with room ID:', data);
+      return data;
     } catch (err) {
+      console.error('Error in createDirectMessage:', err);
       setError(err.message)
       return null
     }
@@ -198,7 +329,12 @@ export const useChat = (chatRoomId = null) => {
 
   // Real-time subscription for messages
   useEffect(() => {
-    if (!chatRoomId) return
+    if (!chatRoomId) {
+      console.log('No chat room ID for real-time subscription');
+      return;
+    }
+
+    console.log('Setting up real-time subscription for room:', chatRoomId);
 
     const subscription = supabase
       .channel(`chat:${chatRoomId}`)
@@ -208,7 +344,21 @@ export const useChat = (chatRoomId = null) => {
         table: 'chat_messages',
         filter: `chat_room_id=eq.${chatRoomId}`
       }, (payload) => {
-        setMessages(prev => [...prev, payload.new])
+        console.log('Real-time INSERT received:', payload);
+        const newMessage = {
+          ...payload.new,
+          sender: payload.new.sender || { id: payload.new.sender_id, name: 'Unknown', avatar_url: null }
+        };
+        setMessages(prev => {
+          // Check if message already exists (to avoid duplicates)
+          const exists = prev.some(msg => msg.id === newMessage.id);
+          if (exists) {
+            console.log('Message already exists, not adding duplicate');
+            return prev;
+          }
+          console.log('Adding new message to state:', newMessage);
+          return [...prev, newMessage];
+        });
       })
       .on('postgres_changes', {
         event: 'UPDATE',
@@ -216,15 +366,22 @@ export const useChat = (chatRoomId = null) => {
         table: 'chat_messages',
         filter: `chat_room_id=eq.${chatRoomId}`
       }, (payload) => {
+        console.log('Real-time UPDATE received:', payload);
         setMessages(prev => 
           prev.map(msg => 
-            msg.id === payload.new.id ? payload.new : msg
+            msg.id === payload.new.id ? {
+              ...payload.new,
+              sender: payload.new.sender || { id: payload.new.sender_id, name: 'Unknown', avatar_url: null }
+            } : msg
           )
         )
       })
-      .subscribe()
+      .subscribe((status) => {
+        console.log('Real-time subscription status:', status);
+      })
 
     return () => {
+      console.log('Cleaning up real-time subscription for room:', chatRoomId);
       subscription.unsubscribe()
     }
   }, [chatRoomId])

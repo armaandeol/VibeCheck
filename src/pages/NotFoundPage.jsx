@@ -153,7 +153,7 @@ function NotFoundPage() {
               max="1"
               step="0.01"
               value={volume}
-              onChange={e => setVolume(Number(e.target.value))}
+              onChange={handleVolumeChange}
               className="w-24 sm:w-32 h-1 bg-gray-500 rounded-full appearance-none cursor-pointer focus:outline-none"
               style={{
                 background: `linear-gradient(to right, #fff 0%, #fff ${volume * 100}%, rgba(255,255,255,0.3) ${volume * 100}%, rgba(255,255,255,0.3) 100%)`

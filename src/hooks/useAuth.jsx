@@ -19,8 +19,10 @@ export const AuthProvider = ({ children }) => {
 
   // Helper function to ensure profile exists for a user
   const ensureProfileExists = async (userData) => {
+    console.log('ensureProfileExists called with userData:', userData);
     try {
       const { exists, data } = await profile.profileExists(userData.id);
+      console.log('profileExists result:', { exists, data });
       if (!exists) {
         console.log('Profile does not exist, creating profile for user:', userData.email);
         const { data: createdProfile, error: createError } = await profile.createProfile(userData);
@@ -36,6 +38,7 @@ export const AuthProvider = ({ children }) => {
           console.log('Profile created successfully for user:', userData.email);
         }
       } else {
+        console.log('Setting userProfile to:', data);
         setUserProfile(data);
         console.log('Profile loaded for user:', userData.email);
       }
@@ -57,17 +60,21 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     // Get initial session
     const getSession = async () => {
+      console.log('useAuth: Getting initial session');
       const {
         data: { session },
       } = await supabase.auth.getSession();
+      console.log('useAuth: Initial session result:', session);
       setUser(session?.user ?? null);
       
       // If user exists, ensure profile exists and load it
       if (session?.user) {
+        console.log('useAuth: User found, ensuring profile exists');
         await ensureProfileExists(session.user);
       }
       
       setLoading(false);
+      console.log('useAuth: Initial loading complete');
     };
 
     getSession();
@@ -76,13 +83,16 @@ export const AuthProvider = ({ children }) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('useAuth: Auth state change:', event, session);
       setUser(session?.user ?? null);
       setLoading(false);
       
       // Handle profile creation/loading for different events
       if (session?.user) {
+        console.log('useAuth: User in session, ensuring profile exists');
         await ensureProfileExists(session.user);
       } else {
+        console.log('useAuth: No user in session, clearing profile');
         setUserProfile(null);
       }
     });
@@ -90,6 +100,8 @@ export const AuthProvider = ({ children }) => {
     return () => subscription.unsubscribe();
   }, []);
 
+  console.log('useAuth context value - userProfile:', userProfile);
+  
   const value = {
     user,
     userProfile,
@@ -192,6 +204,15 @@ export const AuthProvider = ({ children }) => {
     },
     rejectFriendRequest: async (requestId) => {
       return await profile.rejectFriendRequest(requestId);
+    },
+    getAllFriendRelationships: async () => {
+      if (!user) return { data: [], error: { message: 'No user logged in' } };
+      console.log('useAuth getAllFriendRelationships called for user:', user.id);
+      return await profile.getAllFriendRelationships(user.id);
+    },
+    cancelFriendRequest: async (requestId) => {
+      console.log('useAuth cancelFriendRequest called with requestId:', requestId);
+      return await profile.cancelFriendRequest(requestId);
     }
   };
 
