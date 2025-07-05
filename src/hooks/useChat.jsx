@@ -53,6 +53,12 @@ export const useChat = (chatRoomId = null) => {
             sender:profiles(name)
           )
         `)
+        .in('id', 
+          supabase
+            .from('chat_participants')
+            .select('chat_room_id')
+            .eq('user_id', user.id)
+        )
         .order('updated_at', { ascending: false })
 
       if (error) throw error
@@ -65,18 +71,24 @@ export const useChat = (chatRoomId = null) => {
   }, [user])
 
   // Send a message
-  const sendMessage = useCallback(async (message, roomId = chatRoomId) => {
-    if (!user || !roomId || !message.trim()) return
+  const sendMessage = useCallback(async (message, roomId = chatRoomId, messageType = 'text', metadata = null) => {
+    if (!user || !roomId || (!message.trim() && messageType === 'text')) return
 
     try {
+      const messageData = {
+        chat_room_id: roomId,
+        sender_id: user.id,
+        message: message.trim(),
+        message_type: messageType
+      }
+
+      if (metadata) {
+        messageData.metadata = metadata
+      }
+
       const { data, error } = await supabase
         .from('chat_messages')
-        .insert({
-          chat_room_id: roomId,
-          sender_id: user.id,
-          message: message.trim(),
-          message_type: 'text'
-        })
+        .insert(messageData)
         .select()
 
       if (error) throw error

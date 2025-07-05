@@ -54,6 +54,28 @@ BEGIN
     ) THEN
         ALTER TABLE profiles ADD COLUMN friends JSONB DEFAULT '[]'::jsonb;
     END IF;
+
+    -- Add Spotify token columns if they don't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'profiles' AND column_name = 'spotify_access_token'
+    ) THEN
+        ALTER TABLE profiles ADD COLUMN spotify_access_token TEXT;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'profiles' AND column_name = 'spotify_refresh_token'
+    ) THEN
+        ALTER TABLE profiles ADD COLUMN spotify_refresh_token TEXT;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'profiles' AND column_name = 'spotify_token_expires'
+    ) THEN
+        ALTER TABLE profiles ADD COLUMN spotify_token_expires BIGINT;
+    END IF;
 END $$;
 
 -- Friends Table for proper friend relationships
@@ -145,7 +167,7 @@ CREATE POLICY "Users can view their friends" ON friends
     FOR SELECT USING (auth.uid()::text = user_id::text OR auth.uid()::text = friend_id::text);
 
 CREATE POLICY "Users can manage their friends" ON friends
-    FOR ALL USING (auth.uid()::text = user_id::text);
+    FOR ALL USING (auth.uid()::text = user_id::text OR auth.uid()::text = friend_id::text);
 
 -- Drop existing policies if they exist
 DROP POLICY IF EXISTS "Users can view their chat rooms" ON chat_rooms;
@@ -399,15 +421,22 @@ RETURNS TABLE (
 BEGIN
     RETURN QUERY
     SELECT 
-        p.id,
+        CASE 
+            WHEN f.user_id = user_uuid THEN f.friend_id
+            ELSE f.user_id
+        END as friend_id,
         p.name,
         p.email,
         p.avatar_url,
         f.status
     FROM friends f
-    JOIN profiles p ON (f.friend_id = p.id OR f.user_id = p.id)
+    JOIN profiles p ON (
+        CASE 
+            WHEN f.user_id = user_uuid THEN f.friend_id
+            ELSE f.user_id
+        END = p.id
+    )
     WHERE (f.user_id = user_uuid OR f.friend_id = user_uuid)
-    AND p.id != user_uuid
     AND f.status = 'accepted';
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER; 
