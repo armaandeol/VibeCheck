@@ -72,7 +72,12 @@ export const useChat = (chatRoomId = null) => {
 
   // Send a message
   const sendMessage = useCallback(async (message, roomId = chatRoomId, messageType = 'text', metadata = null) => {
-    if (!user || !roomId || (!message.trim() && messageType === 'text')) return
+    console.log('sendMessage called with:', { message, roomId, messageType, metadata, user: user?.id });
+    
+    if (!user || !roomId || (!message.trim() && messageType === 'text')) {
+      console.log('sendMessage validation failed:', { user: !!user, roomId: !!roomId, messageTrim: message?.trim() });
+      return null;
+    }
 
     try {
       const messageData = {
@@ -86,10 +91,14 @@ export const useChat = (chatRoomId = null) => {
         messageData.metadata = metadata
       }
 
+      console.log('Sending message data:', messageData);
+
       const { data, error } = await supabase
         .from('chat_messages')
         .insert(messageData)
         .select()
+
+      console.log('Supabase response:', { data, error });
 
       if (error) throw error
       
@@ -98,6 +107,7 @@ export const useChat = (chatRoomId = null) => {
       
       return data[0]
     } catch (err) {
+      console.error('Error sending message:', err);
       setError(err.message)
       return null
     }

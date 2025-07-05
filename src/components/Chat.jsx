@@ -57,6 +57,7 @@ const Chat = ({ selectedFriend: initialFriend, onClose }) => {
 
   // Handle friend selection and create/get chat room
   const handleFriendSelect = async (friend) => {
+    console.log('handleFriendSelect called with friend:', friend);
     setSelectedFriend(friend)
     
     // Check if DM already exists
@@ -65,12 +66,17 @@ const Chat = ({ selectedFriend: initialFriend, onClose }) => {
       room.participants.some(p => p.user.id === friend.id)
     )
 
+    console.log('Existing room found:', existingRoom);
+
     if (existingRoom) {
+      console.log('Using existing room:', existingRoom.id);
       setCurrentChatRoom(existingRoom)
       markAsRead(existingRoom.id)
     } else {
+      console.log('Creating new DM for friend:', friend.id);
       // Create new DM
       const roomId = await createDirectMessage(friend.id)
+      console.log('New room ID:', roomId);
       if (roomId) {
         const newRoom = {
           id: roomId,
@@ -81,17 +87,32 @@ const Chat = ({ selectedFriend: initialFriend, onClose }) => {
             { user: { id: friend.id, name: friend.name, avatar_url: friend.avatar_url } }
           ]
         }
+        console.log('Setting new room:', newRoom);
         setCurrentChatRoom(newRoom)
+      } else {
+        console.error('Failed to create new DM');
       }
     }
   }
 
   const handleSendMessage = async () => {
+    console.log('handleSendMessage called:', { 
+      newMessage: newMessage.trim(), 
+      currentChatRoom: currentChatRoom?.id,
+      user: user?.id 
+    });
+    
     if (newMessage.trim() && currentChatRoom) {
       const success = await sendMessage(newMessage, currentChatRoom.id)
+      console.log('sendMessage result:', success);
       if (success) {
         setNewMessage('')
       }
+    } else {
+      console.log('Message validation failed:', { 
+        messageTrimmed: newMessage.trim(), 
+        hasChatRoom: !!currentChatRoom 
+      });
     }
   }
 
