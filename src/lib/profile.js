@@ -136,11 +136,31 @@ export const profile = {
 
   // Accept a friend request
   async acceptFriendRequest(requestId) {
+    console.log('Accepting friend request with ID:', requestId);
+    
+    // First, let's check if the request exists and get its details
+    const { data: requestData, error: fetchError } = await supabase
+      .from('friends')
+      .select('*')
+      .eq('id', requestId)
+      .single();
+    
+    if (fetchError) {
+      console.error('Error fetching friend request:', fetchError);
+      return { data: null, error: fetchError };
+    }
+    
+    console.log('Found friend request:', requestData);
+    
+    // Now update the status
     const { data, error } = await supabase
       .from('friends')
       .update({ status: 'accepted' })
       .eq('id', requestId)
       .select();
+    
+    console.log('Update result:', { data, error });
+    
     return { data, error };
   },
 

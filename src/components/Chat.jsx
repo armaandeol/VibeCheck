@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useChat } from '../hooks/useChat.jsx'
 import { useAuth } from '../hooks/useAuth.jsx'
 import { supabase } from '../lib/supabase.js'
+import SpotifyService from '../lib/spotify.js'
 
 const Chat = ({ selectedFriend: initialFriend, onClose }) => {
   const { user, getFriends } = useAuth()
@@ -9,6 +10,7 @@ const Chat = ({ selectedFriend: initialFriend, onClose }) => {
   const [currentChatRoom, setCurrentChatRoom] = useState(null)
   const [newMessage, setNewMessage] = useState('')
   const [friends, setFriends] = useState([])
+  const [blendLoading, setBlendLoading] = useState(false)
   const messagesEndRef = useRef(null)
 
   // Use the chat hook for real-time functionality
@@ -100,6 +102,96 @@ const Chat = ({ selectedFriend: initialFriend, onClose }) => {
     }
   }
 
+  const handleBlend = async () => {
+    if (!selectedFriend || blendLoading) return
+    
+    setBlendLoading(true)
+    try {
+      // Get current user's Spotify tokens from database
+      const userTokens = await SpotifyService.getStoredTokensFromDatabase(user.id)
+      if (!userTokens?.access_token) {
+        alert('Please connect your Spotify account first!')
+        return
+      }
+
+      // Get friend's Spotify tokens from their profile
+      const friendTokens = await SpotifyService.getStoredTokensFromDatabase(selectedFriend.id)
+      if (!friendTokens?.access_token) {
+        alert(`${selectedFriend.name || selectedFriend.email} needs to connect their Spotify account first!`)
+        return
+      }
+
+      // Check if friend's token is valid, refresh if needed
+      let friendAccessToken = friendTokens.access_token
+      if (friendTokens.expires_at && Date.now() > parseInt(friendTokens.expires_at)) {
+        try {
+          const refreshedTokens = await SpotifyService.refreshAccessToken(friendTokens.refresh_token)
+          friendAccessToken = refreshedTokens.access_token
+          
+          // Update friend's tokens in database
+          await SpotifyService.storeTokensInDatabase(refreshedTokens, selectedFriend.id)
+        } catch (refreshError) {
+          alert(`${selectedFriend.name || selectedFriend.email} needs to reconnect their Spotify account!`)
+          return
+        }
+      }
+
+      // Get both users' top tracks
+      const [userTopTracks, friendTopTracks] = await Promise.all([
+        SpotifyService.getTopTracks(userTokens.access_token, 'medium_term', 10),
+        SpotifyService.getTopTracks(friendAccessToken, 'medium_term', 10)
+      ])
+
+      // Combine and shuffle tracks from both users
+      const allTracks = [...userTopTracks.items, ...friendTopTracks.items]
+      const shuffledTracks = allTracks.sort(() => Math.random() - 0.5).slice(0, 20)
+      const trackUris = shuffledTracks.map(track => track.uri)
+
+      // Get current user's profile for playlist creation
+      const userProfile = await SpotifyService.getUserProfile(userTokens.access_token)
+      
+      // Create collaborative playlist
+      const playlistName = `${user.name || 'You'} & ${selectedFriend.name || selectedFriend.email} - Blend`
+      const playlistDescription = `A collaborative playlist blending ${user.name || 'your'} and ${selectedFriend.name || selectedFriend.email}'s music tastes`
+      
+      const playlist = await SpotifyService.createPlaylist(
+        userTokens.access_token, 
+        userProfile.id, 
+        playlistName, 
+        playlistDescription, 
+        true // public
+      )
+
+      // Add tracks to playlist
+      if (trackUris.length > 0) {
+        await SpotifyService.addTracksToPlaylist(userTokens.access_token, playlist.id, trackUris)
+      }
+
+      // Send playlist message to chat
+      if (currentChatRoom) {
+        await sendMessage('', currentChatRoom.id, 'playlist_share', {
+          playlist: {
+            id: playlist.id,
+            name: playlist.name,
+            url: playlist.external_urls.spotify,
+            cover: playlist.images?.[0]?.url,
+            tracks: trackUris.length,
+            duration: '~1h'
+          }
+        })
+      }
+
+      // Open playlist in Spotify
+      window.open(playlist.external_urls.spotify, '_blank')
+      
+    } catch (error) {
+      console.error('Error creating blend playlist:', error)
+      alert('Failed to create blend playlist. Please try again!')
+    } finally {
+      setBlendLoading(false)
+    }
+  }
+
   const formatTime = (timestamp) => {
     return new Date(timestamp).toLocaleTimeString([], { 
       hour: '2-digit', 
@@ -110,7 +202,7 @@ const Chat = ({ selectedFriend: initialFriend, onClose }) => {
   const renderMessage = (message) => {
     const isSent = message.sender_id === user?.id
     
-    if (message.message_type === 'playlist') {
+    if (message.message_type === 'playlist_share') {
       const playlist = message.metadata?.playlist
       return (
         <div className={`message-bubble ${isSent ? 'message-sent' : 'message-received'}`}>
@@ -213,11 +305,19 @@ const Chat = ({ selectedFriend: initialFriend, onClose }) => {
           </div>
           <div className="flex items-center space-x-2">
             {/* Blend Button */}
-            <button className="flex items-center px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg text-sm font-semibold hover:scale-105 transition-transform">
-              <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-              </svg>
-              Blend
+            <button 
+              onClick={handleBlend}
+              disabled={blendLoading}
+              className="flex items-center px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg text-sm font-semibold hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {blendLoading ? (
+                <span className="spinner w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-1"></span>
+              ) : (
+                <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                </svg>
+              )}
+              {blendLoading ? 'Creating...' : 'Blend'}
             </button>
             <button 
               onClick={onClose}
