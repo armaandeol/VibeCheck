@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import gsap from 'gsap'
+
 
 const situations = [
   { name: 'Working / Focused', emoji: '💼', color: 'bg-blue-500 hover:bg-blue-600' },
@@ -18,23 +20,120 @@ const situations = [
 const SituationSelector = ({ onSituationChange }) => {
   const [selectedSituation, setSelectedSituation] = useState(null)
   const [showSituations, setShowSituations] = useState(false)
+  
+  // Refs for animation targets
+  const gridRef = useRef(null)
+  const buttonRefs = useRef([])
+  const emojiRef = useRef(null)
+  const containerRef = useRef(null)
+
+  // Initialize GSAP context
+  useEffect(() => {
+    const ctx = gsap.context(() => {}, containerRef)
+    return () => ctx.revert()
+  }, [])
+
+  // Grid entrance animation
+  useEffect(() => {
+    if (!showSituations || !gridRef.current) return
+    
+    const buttons = [...gridRef.current.children]
+    
+    // Set initial state
+    gsap.set(buttons, {
+      opacity: 0,
+      y: 30,
+      scale: 0.8
+    })
+    
+    // Animate in
+    gsap.to(buttons, {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      stagger: 0.06,
+      duration: 0.45,
+      ease: "back.out(1.4)",
+      delay: 0.2
+    })
+  }, [showSituations])
+
+  // Selected emoji animation
+  useEffect(() => {
+    if (!selectedSituation || !emojiRef.current) return
+    
+    gsap.fromTo(emojiRef.current,
+      { scale: 0.3, rotation: -10 },
+      {
+        scale: 1,
+        rotation: 0,
+        duration: 0.7,
+        ease: "elastic.out(1.4, 0.4)"
+      }
+    )
+  }, [selectedSituation])
 
   const handleSituationSelect = (situation) => {
     setSelectedSituation(situation)
-    console.log(`Selected situation: ${situation.name}`)
-    // Notify parent component of situation change
-    if (onSituationChange) {
-      onSituationChange(situation)
+    
+    // Find clicked button
+    const index = situations.findIndex(s => s.name === situation.name)
+    if (index !== -1 && buttonRefs.current[index]) {
+      // Button bounce animation
+      gsap.fromTo(buttonRefs.current[index],
+        { scale: 1 },
+        {
+          scale: [1.25, 1],
+          duration: 0.6,
+          ease: "elastic.out(1.3, 0.5)"
+        }
+      )
     }
+
+    if (onSituationChange) onSituationChange(situation)
   }
 
   const handleRandomSituation = () => {
     const randomSituation = situations[Math.floor(Math.random() * situations.length)]
     handleSituationSelect(randomSituation)
+    
+    // Container shuffle animation
+    gsap.fromTo(containerRef.current,
+      { x: 0 },
+      {
+        x: [15, -12, 10, -8, 0],
+        duration: 0.6,
+        ease: "sine.inOut"
+      }
+    )
+  }
+
+  // Hover animations
+  const handleMouseEnter = (index) => {
+    if (buttonRefs.current[index]) {
+      gsap.to(buttonRefs.current[index], {
+        scale: 1.05,
+        duration: 0.3,
+        ease: "power2.out"
+      })
+    }
+  }
+
+  const handleMouseLeave = (index) => {
+    if (buttonRefs.current[index]) {
+      gsap.to(buttonRefs.current[index], {
+        scale: 1,
+        duration: 0.5,
+        ease: "elastic.out(1.2, 0.4)"
+      })
+    }
   }
 
   return (
-    <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-gray-200">
+    <div 
+      ref={containerRef}
+      className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-gray-200"
+    >
       <div className="text-center mb-6">
         <div className="text-4xl mb-4">🎬</div>
         <h3 className="text-2xl font-bold text-gray-900 mb-3">Situation Selector</h3>
@@ -54,15 +153,21 @@ const SituationSelector = ({ onSituationChange }) => {
 
       {showSituations && (
         <div className="mt-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-6">
-            {situations.map((situation) => (
+          <div 
+            ref={gridRef}
+            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-6"
+          >
+            {situations.map((situation, index) => (
               <button
                 key={situation.name}
+                ref={el => buttonRefs.current[index] = el}
                 onClick={() => handleSituationSelect(situation)}
+                onMouseEnter={() => handleMouseEnter(index)}
+                onMouseLeave={() => handleMouseLeave(index)}
                 className={`
-                  p-4 rounded-xl transition-all duration-200 transform hover:scale-105 
+                  p-4 rounded-xl transition-all duration-200 transform
                   ${selectedSituation?.name === situation.name 
-                    ? `${situation.color} shadow-lg scale-105 ring-4 ring-white/50` 
+                    ? `${situation.color} shadow-lg ring-4 ring-white/50` 
                     : `${situation.color} hover:shadow-md`
                   }
                   text-white font-medium text-left
@@ -87,9 +192,7 @@ const SituationSelector = ({ onSituationChange }) => {
               <button
                 onClick={() => {
                   setSelectedSituation(null)
-                  if (onSituationChange) {
-                    onSituationChange(null)
-                  }
+                  if (onSituationChange) onSituationChange(null)
                 }}
                 className="bg-gray-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-600 transition-colors"
               >
@@ -102,9 +205,11 @@ const SituationSelector = ({ onSituationChange }) => {
             <div className="mt-6 p-4 bg-purple-50 rounded-lg">
               <h4 className="font-semibold text-purple-800 mb-2">Selected Situation:</h4>
               <div className="flex items-center gap-3">
-                <div className="text-3xl">{selectedSituation.emoji}</div>
+                <div className="text-3xl" ref={emojiRef}>
+                  {selectedSituation.emoji}
+                </div>
                 <div>
-                  <div className="font-medium text-lg">{selectedSituation.name}</div>
+                  <div className="text-gray-800 font-medium text-lg">{selectedSituation.name}</div>
                   <div className="text-sm text-gray-600">
                     Great! We'll tailor content to match your current situation.
                   </div>
