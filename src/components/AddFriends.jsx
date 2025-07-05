@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/useAuth.jsx'
 import { supabase } from '../lib/supabase.js'
 
 const AddFriends = ({ isOpen, onClose }) => {
-  const { user } = useAuth()
+  const { user, acceptFriendRequest, rejectFriendRequest } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [pendingRequests, setPendingRequests] = useState([])
@@ -65,13 +65,9 @@ const AddFriends = ({ isOpen, onClose }) => {
   }
 
   // Accept friend request
-  const acceptFriendRequest = async (requestId) => {
+  const handleAcceptFriendRequest = async (requestId) => {
     try {
-      const { error } = await supabase
-        .from('friends')
-        .update({ status: 'accepted' })
-        .eq('id', requestId)
-
+      const { error } = await acceptFriendRequest(requestId)
       if (!error) {
         fetchPendingRequests()
       }
@@ -81,13 +77,9 @@ const AddFriends = ({ isOpen, onClose }) => {
   }
 
   // Reject friend request
-  const rejectFriendRequest = async (requestId) => {
+  const handleRejectFriendRequest = async (requestId) => {
     try {
-      const { error } = await supabase
-        .from('friends')
-        .delete()
-        .eq('id', requestId)
-
+      const { error } = await rejectFriendRequest(requestId)
       if (!error) {
         fetchPendingRequests()
       }
@@ -296,13 +288,13 @@ const AddFriends = ({ isOpen, onClose }) => {
                     </div>
                     <div className="flex space-x-2">
                       <button
-                        onClick={() => acceptFriendRequest(request.id)}
+                        onClick={() => handleAcceptFriendRequest(request.id)}
                         className="bg-green-500 hover:bg-green-600 text-black px-3 py-1 rounded-full text-sm font-medium transition-colors"
                       >
                         Accept
                       </button>
                       <button
-                        onClick={() => rejectFriendRequest(request.id)}
+                        onClick={() => handleRejectFriendRequest(request.id)}
                         className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-full text-sm font-medium transition-colors"
                       >
                         Reject

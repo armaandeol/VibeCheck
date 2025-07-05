@@ -134,11 +134,9 @@ export const profile = {
 
   // Get user's friends
   async getFriends(userId) {
-    const { data: profile, error } = await this.getProfile(userId);
-    if (error || !profile) {
-      return { data: [], error };
-    }
-    return { data: profile.friends || [], error: null };
+    // Use Supabase RPC to get all accepted friends for this user
+    const { data, error } = await supabase.rpc('get_user_friends', { user_uuid: userId });
+    return { data: data || [], error };
   },
 
   // Search users by email (for adding friends)
@@ -164,6 +162,26 @@ export const profile = {
   async profileExists(userId) {
     const { data, error } = await this.getProfile(userId);
     return { exists: !!data && !error, data, error };
+  },
+
+  // Accept a friend request
+  async acceptFriendRequest(requestId) {
+    const { data, error } = await supabase
+      .from('friends')
+      .update({ status: 'accepted' })
+      .eq('id', requestId)
+      .select();
+    return { data, error };
+  },
+
+  // Reject a friend request
+  async rejectFriendRequest(requestId) {
+    const { data, error } = await supabase
+      .from('friends')
+      .delete()
+      .eq('id', requestId)
+      .select();
+    return { data, error };
   },
 };
 

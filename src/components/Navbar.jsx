@@ -5,7 +5,7 @@ import AddFriends from './AddFriends'
 import { supabase } from '../lib/supabase.js'
 
 const Navbar = () => {
-  const { user, signOut } = useAuth()
+  const { user, signOut, acceptFriendRequest, rejectFriendRequest } = useAuth()
   const location = useLocation()
   const [showNotifications, setShowNotifications] = useState(false)
   const [showAddFriends, setShowAddFriends] = useState(false)
@@ -39,11 +39,11 @@ const Navbar = () => {
   }, [user])
 
   const handleAccept = async (requestId) => {
-    await supabase.from('friends').update({ status: 'accepted' }).eq('id', requestId)
+    await acceptFriendRequest(requestId)
     setFriendRequests((prev) => prev.filter((r) => r.id !== requestId))
   }
   const handleReject = async (requestId) => {
-    await supabase.from('friends').delete().eq('id', requestId)
+    await rejectFriendRequest(requestId)
     setFriendRequests((prev) => prev.filter((r) => r.id !== requestId))
   }
 
