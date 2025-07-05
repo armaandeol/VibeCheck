@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth.jsx'
 import { supabase } from '../lib/supabase.js'
 
 const Chat = ({ selectedFriend: initialFriend, onClose }) => {
-  const { user } = useAuth()
+  const { user, getFriends } = useAuth()
   const [selectedFriend, setSelectedFriend] = useState(initialFriend)
   const [currentChatRoom, setCurrentChatRoom] = useState(null)
   const [newMessage, setNewMessage] = useState('')
@@ -35,31 +35,23 @@ const Chat = ({ selectedFriend: initialFriend, onClose }) => {
   useEffect(() => {
     const fetchFriends = async () => {
       try {
-        const { data, error } = await supabase
-          .from('friends')
-          .select(`
-            friend:profiles!friends_friend_id_fkey(id, name, avatar_url, email)
-          `)
-          .eq('user_id', user?.id)
-          .eq('status', 'accepted')
-
+        const { data, error } = await getFriends();
         if (!error && data) {
-          setFriends(data.map(item => ({
-            id: item.friend.id,
-            name: item.friend.name,
-            avatar_url: item.friend.avatar_url,
-            email: item.friend.email
-          })))
+          setFriends(data.map(friend => ({
+            id: friend.friend_id,
+            name: friend.friend_name,
+            avatar_url: friend.friend_avatar_url,
+            email: friend.friend_email
+          })));
         }
       } catch (err) {
-        console.error('Error fetching friends:', err)
+        console.error('Error fetching friends:', err);
       }
-    }
-
+    };
     if (user) {
-      fetchFriends()
+      fetchFriends();
     }
-  }, [user])
+  }, [user, getFriends]);
 
   // Handle friend selection and create/get chat room
   const handleFriendSelect = async (friend) => {

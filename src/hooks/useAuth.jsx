@@ -172,6 +172,12 @@ export const AuthProvider = ({ children }) => {
         setUserProfile(data);
       }
       return { data, error };
+    },
+    acceptFriendRequest: async (requestId) => {
+      return await profile.acceptFriendRequest(requestId);
+    },
+    rejectFriendRequest: async (requestId) => {
+      return await profile.rejectFriendRequest(requestId);
     }
   };
 
