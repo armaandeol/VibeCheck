@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './hooks/useAuth'
 import Navbar from './components/Navbar'
+import Footer from './components/Footer'
 import DashboardPage from './pages/DashboardPage'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
@@ -15,14 +16,15 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="App">
+        <div className="App min-h-screen bg-black text-white flex flex-col">
           <Routes>
             <Route path="/" element={
               <>
                 <Navbar />
-                <div className="pt-16">
+                <main className="pt-16 flex-grow">
                   <RootRoute />
-                </div>
+                </main>
+                <Footer />
               </>
             } />
             <Route 
@@ -30,11 +32,12 @@ function App() {
               element={
                 <>
                   <Navbar />
-                  <div className="pt-16">
+                  <main className="pt-16 flex-grow">
                     <PublicRoute>
                       <LoginPage />
                     </PublicRoute>
-                  </div>
+                  </main>
+                  <Footer />
                 </>
               } 
             />
@@ -43,11 +46,12 @@ function App() {
               element={
                 <>
                   <Navbar />
-                  <div className="pt-16">
+                  <main className="pt-16 flex-grow">
                     <ProtectedRoute>
                       <ProfilePage />
                     </ProtectedRoute>
-                  </div>
+                  </main>
+                  <Footer />
                 </>
               } 
             />
@@ -56,15 +60,21 @@ function App() {
               element={
                 <>
                   <Navbar />
-                  <div className="pt-16">
+                  <main className="pt-16 flex-grow">
                     <ProtectedRoute>
                       <SpotifyCallback />
                     </ProtectedRoute>
-                  </div>
+                  </main>
+                  <Footer />
                 </>
               } 
             />
-            <Route path="*" element={<NotFoundPage />} />
+            <Route path="*" element={
+              <>
+                <NotFoundPage />
+                <Footer />
+              </>
+            } />
           </Routes>
         </div>
       </Router>
