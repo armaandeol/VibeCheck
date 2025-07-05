@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth.jsx'
 import Chat from '../components/Chat'
+import ProfileHeader from '../components/ProfileHeader'
+import StatsCards from '../components/StatsCards'
 import Profile from '../components/Profile'
 import SpotifyService from '../lib/spotify'
 
@@ -38,7 +40,6 @@ const ProfilePage = () => {
   const timeAgo = (dateString) => {
     const date = new Date(dateString);
     const seconds = Math.floor((new Date() - date) / 1000);
-
     let interval = seconds / 31536000;
     if (interval > 1) return Math.floor(interval) + " years";
     interval = seconds / 2592000;
@@ -58,28 +59,23 @@ const ProfilePage = () => {
       const duration = 2000
       const steps = 60
       const stepDuration = duration / steps
-
       let currentStep = 0
       const interval = setInterval(() => {
         currentStep++
         const progress = currentStep / steps
         const easeOut = 1 - Math.pow(1 - progress, 3)
-
         setAnimatedStats({
           playlists: Math.floor(targetStats.playlists * easeOut),
           tracks: Math.floor(targetStats.tracks * easeOut),
           friends: Math.floor(targetStats.friends * easeOut)
         })
-
         if (currentStep >= steps) {
           clearInterval(interval)
           setAnimatedStats(targetStats)
         }
       }, stepDuration)
-
       return () => clearInterval(interval)
     }
-
     animateStats()
   }, [])
 
@@ -89,12 +85,8 @@ const ProfilePage = () => {
       try {
         const connected = SpotifyService.isTokenValid()
         setIsSpotifyConnected(connected)
-        console.log("Spotify Connected Status:", connected)
-        
         if (connected) {
           const tokens = SpotifyService.getStoredTokens()
-          console.log("Spotify Tokens:", tokens)
-          
           const [topArtists, topTracks, profile, recentlyPlayed, savedTracks] = await Promise.all([
             SpotifyService.getTopArtists(tokens.access_token, 'medium_term', 5),
             SpotifyService.getTopTracks(tokens.access_token, 'medium_term', 5),
@@ -102,13 +94,6 @@ const ProfilePage = () => {
             SpotifyService.getRecentlyPlayed(tokens.access_token, 5),
             SpotifyService.getSavedTracks(tokens.access_token, 5)
           ])
-          
-          console.log("Fetched Top Artists:", topArtists.items)
-          console.log("Fetched Top Tracks:", topTracks.items)
-          console.log("Fetched Profile:", profile)
-          console.log("Fetched Recently Played:", recentlyPlayed.items)
-          console.log("Fetched Saved Tracks:", savedTracks.items)
-
           setSpotifyData({
             topArtists: topArtists.items || [],
             topTracks: topTracks.items || [],
@@ -116,7 +101,6 @@ const ProfilePage = () => {
             recentlyPlayed: recentlyPlayed.items || [],
             savedTracks: savedTracks.items || []
           })
-
           const activity = []
           if (recentlyPlayed.items) {
             recentlyPlayed.items.forEach(item => {
@@ -129,28 +113,21 @@ const ProfilePage = () => {
               })
             })
           }
-          // You can add more activity types here, e.g., created playlists, followed artists
           setRecentSpotifyActivity(activity.sort((a, b) => new Date(b.time) - new Date(a.time)))
-
         } else {
           setSpotifyData(null)
           setRecentSpotifyActivity([])
         }
       } catch (error) {
-        console.error('Error loading Spotify data:', error)
-        // Optionally clear tokens if there's an auth error
-        if (error.message.includes('Token expired') || error.message.includes('401')) {
-          SpotifyService.clearTokens()
-          localStorage.removeItem('spotify_profile')
-          setIsSpotifyConnected(false)
-        }
+        setSpotifyData(null)
+        setRecentSpotifyActivity([])
+        setIsSpotifyConnected(false)
       } finally {
         setLoadingSpotifyActivity(false)
       }
     }
-
     loadSpotifyData()
-  }, [activeTab, isSpotifyConnected]) // Re-run when activeTab changes or spotify connection status changes
+  }, [activeTab, isSpotifyConnected])
 
   const formatNumber = (num) => {
     if (num >= 1000) {
@@ -160,105 +137,12 @@ const ProfilePage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-dashboard flex items-center justify-center relative overflow-hidden">
-      {/* Enhanced Floating Elements */}
-      <div className="floating-element"></div>
-      <div className="floating-element"></div>
-      <div className="floating-element"></div>
-      <div className="floating-element"></div>
-      <div className="floating-element"></div>
-
-      <div className="relative z-10 w-full max-w-7xl mx-auto p-8">
-        {/* Header Section */}
-        <div className="card-glass mb-8 p-8">
-          <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
-            {/* Profile Avatar */}
-            <div className="relative">
-              <div className="w-32 h-32 bg-gradient-to-br from-green-500 via-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-6xl font-bold mb-4 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-green-400/20 to-blue-400/20 animate-pulse"></div>
-                {user?.email?.charAt(0).toUpperCase() || 'U'}
-              </div>
-              <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 rounded-full border-4 border-slate-900"></div>
-            </div>
-
-            {/* Profile Info */}
-            <div className="flex-1 text-center md:text-left">
-              <h1 className="text-4xl font-bold text-white mb-2">
-                {isSpotifyConnected && spotifyData?.profile?.display_name ? spotifyData.profile.display_name : user?.email || 'Music Lover'}
-              </h1>
-              <p className="text-gray-300 mb-4 text-lg">
-                {isSpotifyConnected ? `Spotify User • ${spotifyData?.profile?.product || 'Premium'}` : 'VibeCheck Member • Premium'}
-              </p>
-              <div className="flex flex-wrap gap-4 justify-center md:justify-start">
-                <span className="px-4 py-2 bg-green-500/20 text-green-400 rounded-full text-sm font-medium">
-                  Level 8
-                </span>
-                <span className="px-4 py-2 bg-blue-500/20 text-blue-400 rounded-full text-sm font-medium">
-                  {isSpotifyConnected && spotifyData?.profile?.country ? spotifyData.profile.country : musicPersonality.mood}
-                </span>
-                <span className="px-4 py-2 bg-purple-500/20 text-purple-400 rounded-full text-sm font-medium">
-                  {isSpotifyConnected && spotifyData?.profile?.followers?.total ? `${formatNumber(spotifyData.profile.followers.total)} Followers` : musicPersonality.primaryGenre}
-                </span>
-                {isSpotifyConnected && (
-                  <span className="px-4 py-2 bg-green-600/20 text-green-300 rounded-full text-sm font-medium flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.481.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.42 1.56-.299.421-1.02.599-1.559.3z"/>
-                    </svg>
-                    Spotify Connected
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Chat Button */}
-            <div className="flex flex-col gap-3">
-              <button
-                className="btn-primary px-6 py-3 text-lg"
-                onClick={() => setShowChat(true)}
-              >
-                💬 Chat
-              </button>
-            </div>
-          </div>
-        </div>
-
+    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black flex flex-col items-center justify-start relative overflow-hidden pt-16">
+      <div className="relative z-10 w-full max-w-5xl mx-auto p-6">
+        {/* Spotify-like Profile Header */}
+        <ProfileHeader user={user} spotifyProfile={spotifyData?.profile} isSpotifyConnected={isSpotifyConnected} />
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="card-glass p-6 text-center group hover:scale-105 transition-transform duration-300">
-            <div className="text-3xl font-bold text-gradient mb-2">
-              {isSpotifyConnected ? (spotifyData?.topArtists?.length || 0) : '—'}
-            </div>
-            <div className="text-gray-400 text-sm">
-              {isSpotifyConnected ? 'Top Artists' : 'Connect Spotify'}
-            </div>
-            <div className="w-full bg-slate-700 rounded-full h-2 mt-3">
-              <div className="bg-gradient-to-r from-green-500 to-blue-500 h-2 rounded-full" style={{ width: isSpotifyConnected ? `${Math.min((spotifyData?.topArtists?.length || 0) * 5, 100)}%` : '0%' }}></div>
-            </div>
-          </div>
-          <div className="card-glass p-6 text-center group hover:scale-105 transition-transform duration-300">
-            <div className="text-3xl font-bold text-gradient mb-2">
-              {isSpotifyConnected ? (spotifyData?.topTracks?.length || 0) : '—'}
-            </div>
-            <div className="text-gray-400 text-sm">
-              {isSpotifyConnected ? 'Top Tracks' : 'Connect Spotify'}
-            </div>
-            <div className="w-full bg-slate-700 rounded-full h-2 mt-3">
-              <div className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full" style={{ width: isSpotifyConnected ? `${Math.min((spotifyData?.topTracks?.length || 0) * 5, 100)}%` : '0%' }}></div>
-            </div>
-          </div>
-          <div className="card-glass p-6 text-center group hover:scale-105 transition-transform duration-300">
-            <div className="text-3xl font-bold text-gradient mb-2">
-              {isSpotifyConnected ? (spotifyData?.profile?.followers?.total || 0) : '—'}
-            </div>
-            <div className="text-gray-400 text-sm">
-              {isSpotifyConnected ? 'Spotify Followers' : 'Connect Spotify'}
-            </div>
-            <div className="w-full bg-slate-700 rounded-full h-2 mt-3">
-              <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full" style={{ width: isSpotifyConnected ? `${Math.min((spotifyData?.profile?.followers?.total || 0) / 100, 100)}%` : '0%' }}></div>
-            </div>
-          </div>
-        </div>
-
+        <StatsCards playlists={animatedStats.playlists} tracks={animatedStats.tracks} friends={animatedStats.friends} />
         {/* Tab Navigation */}
         <div className="flex space-x-1 mb-8 bg-slate-800/50 rounded-xl p-1">
           {['profile', 'overview', 'activity'].map((tab) => (
@@ -275,7 +159,6 @@ const ProfilePage = () => {
             </button>
           ))}
         </div>
-
         {/* Tab Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Profile Tab */}
@@ -289,7 +172,6 @@ const ProfilePage = () => {
               />
             </div>
           )}
-
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <>
@@ -299,7 +181,6 @@ const ProfilePage = () => {
                   <h3 className="text-3xl font-bold text-white mb-8 flex items-center">
                     🎵 Music Personality
                   </h3>
-                  
                   {!isSpotifyConnected ? (
                     <div className="text-center py-12">
                       <div className="w-24 h-24 bg-gradient-to-br from-green-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -338,7 +219,6 @@ const ProfilePage = () => {
                         <div className="text-gray-300 mb-6 text-lg">
                           Spotify Profile: {spotifyData?.profile?.display_name || 'Connected'}
                         </div>
-                        
                         {/* Real Spotify Stats */}
                         <div className="space-y-4">
                           <div>
@@ -372,7 +252,6 @@ const ProfilePage = () => {
                           </div>
                         </div>
                       </div>
-                      
                       <div>
                         <div className="mb-6">
                           <div className="font-bold text-white mb-4 text-xl">Top Artists:</div>
@@ -415,7 +294,6 @@ const ProfilePage = () => {
               </div>
             </>
           )}
-
           {/* Activity Tab */}
           {activeTab === 'activity' && (
             <div className="lg:col-span-3">
@@ -460,15 +338,14 @@ const ProfilePage = () => {
             </div>
           )}
         </div>
+        {/* Floating Chat Popup */}
+        {showChat && (
+          <Chat
+            selectedFriend={null}
+            onClose={() => setShowChat(false)}
+          />
+        )}
       </div>
-
-      {/* Floating Chat Popup */}
-      {showChat && (
-        <Chat
-          selectedFriend={null}
-          onClose={() => setShowChat(false)}
-        />
-      )}
     </div>
   )
 }

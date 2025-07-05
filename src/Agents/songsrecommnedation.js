@@ -113,6 +113,31 @@ export default async function songRecommendationAgent(request) {
   const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
   const OPENWEATHER_API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY;
 
+  // Check if we're using placeholder keys or if keys are missing (development mode)
+  const isDevelopment = !GROQ_API_KEY || !OPENWEATHER_API_KEY || 
+    GROQ_API_KEY === "placeholder-groq-key" || 
+    OPENWEATHER_API_KEY === "placeholder-weather-key" ||
+    GROQ_API_KEY === "your_groq_api_key_here" ||
+    OPENWEATHER_API_KEY === "your_openweather_api_key_here";
+  
+  if (isDevelopment) {
+    // Return mock data for development
+    return {
+      playlist: [
+        { title: "Bohemian Rhapsody", artist: "Queen" },
+        { title: "Hotel California", artist: "Eagles" },
+        { title: "Imagine", artist: "John Lennon" },
+        { title: "Hey Jude", artist: "The Beatles" },
+        { title: "Stairway to Heaven", artist: "Led Zeppelin" },
+        { title: "Like a Rolling Stone", artist: "Bob Dylan" },
+        { title: "Smells Like Teen Spirit", artist: "Nirvana" },
+        { title: "Wonderwall", artist: "Oasis" },
+        { title: "Creep", artist: "Radiohead" },
+        { title: "Sweet Child O' Mine", artist: "Guns N' Roses" }
+      ]
+    };
+  }
+
   if (!GROQ_API_KEY) {
     throw new Error("GROQ_API_KEY not found in environment variables");
   }
@@ -130,9 +155,9 @@ export default async function songRecommendationAgent(request) {
   }
 
   try {
-    // Get weather data directly using coordinates
+    // Get weather data using proxy
     const weatherResponse = await axios.get(
-      `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${OPENWEATHER_API_KEY}&units=metric`
+      `/api/weather/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${OPENWEATHER_API_KEY}&units=metric`
     );
 
     const weatherData = weatherResponse.data;
@@ -172,9 +197,9 @@ NO \`\`\`json, NO \`\`\`markdown, NO explanations, NO additional text.
 
 GENERATE PLAYLIST NOW - PURE JSON ONLY:`;
 
-    // Call AI model for song recommendations
+    // Call AI model for song recommendations using proxy
     const result = await axios.post(
-      "https://api.groq.com/openai/v1/chat/completions",
+      "/api/groq/openai/v1/chat/completions",
       {
         model: "meta-llama/llama-4-scout-17b-16e-instruct",
         temperature: 0.2,

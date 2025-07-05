@@ -1,52 +1,27 @@
 import { useState, useRef, useEffect } from 'react'
-
-const mockFriends = [
-  { id: 1, name: 'Alex Chen', online: true },
-  { id: 2, name: 'Sarah Kim', online: false },
-  { id: 3, name: 'Priya Singh', online: true },
-  { id: 4, name: 'John Doe', online: true },
-]
+import { useChat } from '../hooks/useChat.jsx'
+import { useAuth } from '../hooks/useAuth.jsx'
+import { supabase } from '../lib/supabase.js'
 
 const Chat = ({ selectedFriend: initialFriend, onClose }) => {
+  const { user } = useAuth()
   const [selectedFriend, setSelectedFriend] = useState(initialFriend)
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      sender: 'friend',
-      text: 'Hey! Check out this new playlist I made for rainy days',
-      time: '2:30 PM',
-      type: 'text'
-    },
-    {
-      id: 2,
-      sender: 'me',
-      text: 'That sounds perfect! Can you share it?',
-      time: '2:32 PM',
-      type: 'text'
-    },
-    {
-      id: 3,
-      sender: 'friend',
-      text: 'Sure! Here\'s my "Rainy Day Vibes" playlist',
-      time: '2:33 PM',
-      type: 'playlist',
-      playlist: {
-        name: 'Rainy Day Vibes',
-        tracks: 23,
-        duration: '1h 15m',
-        cover: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=200'
-      }
-    },
-    {
-      id: 4,
-      sender: 'me',
-      text: 'Love it! The vibe is perfect for today',
-      time: '2:35 PM',
-      type: 'text'
-    }
-  ])
+  const [currentChatRoom, setCurrentChatRoom] = useState(null)
   const [newMessage, setNewMessage] = useState('')
+  const [friends, setFriends] = useState([])
   const messagesEndRef = useRef(null)
+
+  // Use the chat hook for real-time functionality
+  const {
+    messages,
+    chatRooms,
+    loading,
+    error,
+    sendMessage,
+    createDirectMessage,
+    getUnreadCount,
+    markAsRead
+  } = useChat(currentChatRoom?.id)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -56,17 +31,73 @@ const Chat = ({ selectedFriend: initialFriend, onClose }) => {
     scrollToBottom()
   }, [messages])
 
-  const handleSendMessage = () => {
-    if (newMessage.trim()) {
-      const message = {
-        id: messages.length + 1,
-        sender: 'me',
-        text: newMessage,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        type: 'text'
+  // Fetch friends list
+  useEffect(() => {
+    const fetchFriends = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('friends')
+          .select(`
+            friend:profiles!friends_friend_id_fkey(id, name, avatar_url, email)
+          `)
+          .eq('user_id', user?.id)
+          .eq('status', 'accepted')
+
+        if (!error && data) {
+          setFriends(data.map(item => ({
+            id: item.friend.id,
+            name: item.friend.name,
+            avatar_url: item.friend.avatar_url,
+            email: item.friend.email
+          })))
+        }
+      } catch (err) {
+        console.error('Error fetching friends:', err)
       }
-      setMessages([...messages, message])
-      setNewMessage('')
+    }
+
+    if (user) {
+      fetchFriends()
+    }
+  }, [user])
+
+  // Handle friend selection and create/get chat room
+  const handleFriendSelect = async (friend) => {
+    setSelectedFriend(friend)
+    
+    // Check if DM already exists
+    const existingRoom = chatRooms.find(room => 
+      room.is_direct_message && 
+      room.participants.some(p => p.user.id === friend.id)
+    )
+
+    if (existingRoom) {
+      setCurrentChatRoom(existingRoom)
+      markAsRead(existingRoom.id)
+    } else {
+      // Create new DM
+      const roomId = await createDirectMessage(friend.id)
+      if (roomId) {
+        const newRoom = {
+          id: roomId,
+          name: null,
+          is_direct_message: true,
+          participants: [
+            { user: { id: user.id, name: user.name, avatar_url: user.avatar_url } },
+            { user: { id: friend.id, name: friend.name, avatar_url: friend.avatar_url } }
+          ]
+        }
+        setCurrentChatRoom(newRoom)
+      }
+    }
+  }
+
+  const handleSendMessage = async () => {
+    if (newMessage.trim() && currentChatRoom) {
+      const success = await sendMessage(newMessage, currentChatRoom.id)
+      if (success) {
+        setNewMessage('')
+      }
     }
   }
 
@@ -77,34 +108,42 @@ const Chat = ({ selectedFriend: initialFriend, onClose }) => {
     }
   }
 
+  const formatTime = (timestamp) => {
+    return new Date(timestamp).toLocaleTimeString([], { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    })
+  }
+
   const renderMessage = (message) => {
-    const isSent = message.sender === 'me'
+    const isSent = message.sender_id === user?.id
     
-    if (message.type === 'playlist') {
+    if (message.message_type === 'playlist') {
+      const playlist = message.metadata?.playlist
       return (
         <div className={`message-bubble ${isSent ? 'message-sent' : 'message-received'}`}>
           <div className="flex items-center space-x-3">
             <img 
-              src={message.playlist.cover} 
-              alt={message.playlist.name}
+              src={playlist?.cover || 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=200'}
+              alt={playlist?.name}
               className="w-12 h-12 rounded-lg object-cover"
             />
             <div>
-              <div className="font-semibold text-sm">{message.playlist.name}</div>
+              <div className="font-semibold text-sm">{playlist?.name || 'Playlist'}</div>
               <div className="text-xs opacity-70">
-                {message.playlist.tracks} tracks • {message.playlist.duration}
+                {playlist?.tracks || 0} tracks • {playlist?.duration || '0m'}
               </div>
             </div>
           </div>
-          <div className="message-time">{message.time}</div>
+          <div className="message-time">{formatTime(message.created_at)}</div>
         </div>
       )
     }
 
     return (
       <div className={`message-bubble ${isSent ? 'message-sent' : 'message-received'}`}>
-        <div>{message.text}</div>
-        <div className="message-time">{message.time}</div>
+        <div>{message.message}</div>
+        <div className="message-time">{formatTime(message.created_at)}</div>
       </div>
     )
   }
@@ -123,21 +162,31 @@ const Chat = ({ selectedFriend: initialFriend, onClose }) => {
             </button>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {mockFriends.map(friend => (
-              <button
-                key={friend.id}
-                className="w-full flex items-center space-x-4 bg-slate-800 hover:bg-slate-700 rounded-lg px-4 py-3 transition-colors"
-                onClick={() => setSelectedFriend(friend)}
-              >
-                <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
-                  {friend.name.charAt(0)}
-                </div>
-                <div className="flex-1 text-left">
-                  <div className="text-white font-semibold">{friend.name}</div>
-                  <div className={`text-xs ${friend.online ? 'text-green-400' : 'text-gray-400'}`}>{friend.online ? 'Online' : 'Offline'}</div>
-                </div>
-              </button>
-            ))}
+            {loading ? (
+              <div className="text-gray-400 text-center py-4">Loading friends...</div>
+            ) : friends.length === 0 ? (
+              <div className="text-gray-400 text-center py-4">No friends yet. Start connecting!</div>
+            ) : (
+              friends.map(friend => (
+                <button
+                  key={friend.id}
+                  className="w-full flex items-center space-x-4 bg-slate-800 hover:bg-slate-700 rounded-lg px-4 py-3 transition-colors"
+                  onClick={() => handleFriendSelect(friend)}
+                >
+                  <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
+                    {friend.avatar_url ? (
+                      <img src={friend.avatar_url} alt={friend.name} className="w-full h-full rounded-full object-cover" />
+                    ) : (
+                      friend.name?.charAt(0) || 'F'
+                    )}
+                  </div>
+                  <div className="flex-1 text-left">
+                    <div className="text-white font-semibold">{friend.name || friend.email}</div>
+                    <div className="text-green-400 text-xs">Online</div>
+                  </div>
+                </button>
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -158,12 +207,16 @@ const Chat = ({ selectedFriend: initialFriend, onClose }) => {
             </button>
             <div className="friend-avatar">
               <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
-                {selectedFriend?.name?.charAt(0) || 'F'}
+                {selectedFriend?.avatar_url ? (
+                  <img src={selectedFriend.avatar_url} alt={selectedFriend.name} className="w-full h-full rounded-full object-cover" />
+                ) : (
+                  selectedFriend?.name?.charAt(0) || 'F'
+                )}
               </div>
             </div>
             <div>
-              <div className="text-white font-semibold">{selectedFriend?.name || 'Friend'}</div>
-              <div className="text-green-400 text-xs">{selectedFriend?.online ? 'Online' : 'Offline'}</div>
+              <div className="text-white font-semibold">{selectedFriend?.name || selectedFriend?.email || 'Friend'}</div>
+              <div className="text-green-400 text-xs">Online</div>
             </div>
           </div>
           <div className="flex items-center space-x-2">
@@ -187,11 +240,17 @@ const Chat = ({ selectedFriend: initialFriend, onClose }) => {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 chat-container bg-slate-900">
-          {messages.map((message) => (
-            <div key={message.id} className="animate-fade-in">
-              {renderMessage(message)}
-            </div>
-          ))}
+          {loading ? (
+            <div className="text-gray-400 text-center py-4">Loading messages...</div>
+          ) : messages.length === 0 ? (
+            <div className="text-gray-400 text-center py-4">No messages yet. Start the conversation!</div>
+          ) : (
+            messages.map((message) => (
+              <div key={message.id} className="animate-fade-in">
+                {renderMessage(message)}
+              </div>
+            ))
+          )}
           <div ref={messagesEndRef} />
         </div>
 
@@ -204,14 +263,16 @@ const Chat = ({ selectedFriend: initialFriend, onClose }) => {
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Type a message..."
-              className="flex-1 search-input"
+              className="flex-1 bg-slate-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
             />
-            <button 
+            <button
               onClick={handleSendMessage}
               disabled={!newMessage.trim()}
-              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-lg px-4 py-2 hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Send
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
             </button>
           </div>
         </div>
