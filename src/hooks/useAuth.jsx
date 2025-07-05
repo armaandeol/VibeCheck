@@ -109,9 +109,23 @@ export const AuthProvider = ({ children }) => {
       return { data, error };
     },
     signOut: async () => {
-      const { error } = await supabase.auth.signOut();
-      setUserProfile(null);
-      return { error };
+      // Add timeout to prevent hanging
+      const signOutPromise = supabase.auth.signOut();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Sign out timeout')), 5000)
+      );
+      
+      try {
+        const { error } = await Promise.race([signOutPromise, timeoutPromise]);
+        setUser(null); // Immediately clear user state on sign out
+        setUserProfile(null);
+        return { error };
+      } catch (timeoutError) {
+        // Force state update even if Supabase sign out fails
+        setUser(null);
+        setUserProfile(null);
+        return { error: timeoutError };
+      }
     },
     // Profile-related methods
     updateProfile: async (updates) => {

@@ -53,6 +53,12 @@ export const useChat = (chatRoomId = null) => {
             sender:profiles(name)
           )
         `)
+        .in('id', 
+          supabase
+            .from('chat_participants')
+            .select('chat_room_id')
+            .eq('user_id', user.id)
+        )
         .order('updated_at', { ascending: false })
 
       if (error) throw error
@@ -65,19 +71,34 @@ export const useChat = (chatRoomId = null) => {
   }, [user])
 
   // Send a message
-  const sendMessage = useCallback(async (message, roomId = chatRoomId) => {
-    if (!user || !roomId || !message.trim()) return
+  const sendMessage = useCallback(async (message, roomId = chatRoomId, messageType = 'text', metadata = null) => {
+    console.log('sendMessage called with:', { message, roomId, messageType, metadata, user: user?.id });
+    
+    if (!user || !roomId || (!message.trim() && messageType === 'text')) {
+      console.log('sendMessage validation failed:', { user: !!user, roomId: !!roomId, messageTrim: message?.trim() });
+      return null;
+    }
 
     try {
+      const messageData = {
+        chat_room_id: roomId,
+        sender_id: user.id,
+        message: message.trim(),
+        message_type: messageType
+      }
+
+      if (metadata) {
+        messageData.metadata = metadata
+      }
+
+      console.log('Sending message data:', messageData);
+
       const { data, error } = await supabase
         .from('chat_messages')
-        .insert({
-          chat_room_id: roomId,
-          sender_id: user.id,
-          message: message.trim(),
-          message_type: 'text'
-        })
+        .insert(messageData)
         .select()
+
+      console.log('Supabase response:', { data, error });
 
       if (error) throw error
       
@@ -86,6 +107,7 @@ export const useChat = (chatRoomId = null) => {
       
       return data[0]
     } catch (err) {
+      console.error('Error sending message:', err);
       setError(err.message)
       return null
     }

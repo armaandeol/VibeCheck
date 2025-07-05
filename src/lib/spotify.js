@@ -1,6 +1,7 @@
 const CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET;
 const REDIRECT_URI = 'http://127.0.0.1:5173/callback';
+import { supabase } from './supabase.js'
 
 const SPOTIFY_SCOPES = [
   'user-read-private',
@@ -240,6 +241,53 @@ class SpotifyService {
     localStorage.removeItem('spotify_access_token');
     localStorage.removeItem('spotify_refresh_token');
     localStorage.removeItem('spotify_token_expires');
+  }
+
+  // Store tokens in database
+  async storeTokensInDatabase(tokens, userId) {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          spotify_access_token: tokens.access_token,
+          spotify_refresh_token: tokens.refresh_token,
+          spotify_token_expires: Date.now() + (tokens.expires_in * 1000)
+        })
+        .eq('id', userId)
+
+      if (error) throw error
+    } catch (err) {
+      console.error('Error storing tokens in database:', err)
+      throw err
+    }
+  }
+
+  // Get stored tokens from database
+  async getStoredTokensFromDatabase(userId) {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('spotify_access_token, spotify_refresh_token, spotify_token_expires')
+        .eq('id', userId)
+        .single()
+
+      if (error) throw error
+
+      return {
+        access_token: data.spotify_access_token,
+        refresh_token: data.spotify_refresh_token,
+        expires_at: data.spotify_token_expires
+      }
+    } catch (err) {
+      console.error('Error getting tokens from database:', err)
+      return null
+    }
+  }
+
+  // Check if token is valid in database
+  async isTokenValidInDatabase(userId) {
+    const tokens = await this.getStoredTokensFromDatabase(userId)
+    return tokens && tokens.access_token && tokens.expires_at && Date.now() < parseInt(tokens.expires_at)
   }
 
   // Create a playlist from generated songs

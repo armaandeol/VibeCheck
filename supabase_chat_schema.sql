@@ -54,6 +54,28 @@ BEGIN
     ) THEN
         ALTER TABLE profiles ADD COLUMN friends JSONB DEFAULT '[]'::jsonb;
     END IF;
+
+    -- Add Spotify token columns if they don't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'profiles' AND column_name = 'spotify_access_token'
+    ) THEN
+        ALTER TABLE profiles ADD COLUMN spotify_access_token TEXT;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'profiles' AND column_name = 'spotify_refresh_token'
+    ) THEN
+        ALTER TABLE profiles ADD COLUMN spotify_refresh_token TEXT;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'profiles' AND column_name = 'spotify_token_expires'
+    ) THEN
+        ALTER TABLE profiles ADD COLUMN spotify_token_expires BIGINT;
+    END IF;
 END $$;
 
 -- Friends Table for proper friend relationships
@@ -139,13 +161,21 @@ CREATE POLICY "Users can insert their own profile" ON profiles
 
 -- Friends policies
 DROP POLICY IF EXISTS "Users can view their friends" ON friends;
-DROP POLICY IF EXISTS "Users can manage their friends" ON friends;
+DROP POLICY IF EXISTS "Users can insert friend requests" ON friends;
+DROP POLICY IF EXISTS "Users can update their friend requests" ON friends;
+DROP POLICY IF EXISTS "Users can delete their friend requests" ON friends;
 
 CREATE POLICY "Users can view their friends" ON friends
     FOR SELECT USING (auth.uid()::text = user_id::text OR auth.uid()::text = friend_id::text);
 
-CREATE POLICY "Users can manage their friends" ON friends
-    FOR ALL USING (auth.uid()::text = user_id::text);
+CREATE POLICY "Users can insert friend requests" ON friends
+    FOR INSERT WITH CHECK (auth.uid()::text = user_id::text);
+
+CREATE POLICY "Users can update their friend requests" ON friends
+    FOR UPDATE USING (auth.uid()::text = user_id::text OR auth.uid()::text = friend_id::text);
+
+CREATE POLICY "Users can delete their friend requests" ON friends
+    FOR DELETE USING (auth.uid()::text = user_id::text OR auth.uid()::text = friend_id::text);
 
 -- Drop existing policies if they exist
 DROP POLICY IF EXISTS "Users can view their chat rooms" ON chat_rooms;
@@ -176,6 +206,11 @@ CREATE POLICY "Users can update their chat rooms" ON chat_rooms
     FOR UPDATE USING (auth.uid()::text = created_by::text);
 
 -- Chat participants policies
+DROP POLICY IF EXISTS "Users can view chat participants" ON chat_participants;
+DROP POLICY IF EXISTS "Users can insert chat participants" ON chat_participants;
+DROP POLICY IF EXISTS "Users can update chat participants" ON chat_participants;
+DROP POLICY IF EXISTS "Users can delete chat participants" ON chat_participants;
+
 CREATE POLICY "Users can view chat participants" ON chat_participants
     FOR SELECT USING (
         EXISTS (
@@ -185,8 +220,26 @@ CREATE POLICY "Users can view chat participants" ON chat_participants
         )
     );
 
-CREATE POLICY "Users can manage chat participants" ON chat_participants
-    FOR ALL USING (
+CREATE POLICY "Users can insert chat participants" ON chat_participants
+    FOR INSERT WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM chat_rooms 
+            WHERE chat_rooms.id = chat_participants.chat_room_id 
+            AND chat_rooms.created_by::text = auth.uid()::text
+        )
+    );
+
+CREATE POLICY "Users can update chat participants" ON chat_participants
+    FOR UPDATE USING (
+        EXISTS (
+            SELECT 1 FROM chat_rooms 
+            WHERE chat_rooms.id = chat_participants.chat_room_id 
+            AND chat_rooms.created_by::text = auth.uid()::text
+        )
+    );
+
+CREATE POLICY "Users can delete chat participants" ON chat_participants
+    FOR DELETE USING (
         EXISTS (
             SELECT 1 FROM chat_rooms 
             WHERE chat_rooms.id = chat_participants.chat_room_id 
@@ -399,15 +452,22 @@ RETURNS TABLE (
 BEGIN
     RETURN QUERY
     SELECT 
-        p.id,
+        CASE 
+            WHEN f.user_id = user_uuid THEN f.friend_id
+            ELSE f.user_id
+        END as friend_id,
         p.name,
         p.email,
         p.avatar_url,
         f.status
     FROM friends f
-    JOIN profiles p ON (f.friend_id = p.id OR f.user_id = p.id)
+    JOIN profiles p ON (
+        CASE 
+            WHEN f.user_id = user_uuid THEN f.friend_id
+            ELSE f.user_id
+        END = p.id
+    )
     WHERE (f.user_id = user_uuid OR f.friend_id = user_uuid)
-    AND p.id != user_uuid
     AND f.status = 'accepted';
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER; 

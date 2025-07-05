@@ -68,10 +68,12 @@ const AddFriends = ({ isOpen, onClose }) => {
 
   // Accept friend request
   const handleAcceptFriendRequest = async (requestId) => {
+    console.log('Accept button clicked for request ID:', requestId);
     setActionLoading(true)
     setMessage('')
     try {
       const { error } = await acceptFriendRequest(requestId)
+      console.log('Accept result:', { error });
       if (error) {
         setMessage(`Error: ${error.message}`)
       } else {
@@ -79,6 +81,7 @@ const AddFriends = ({ isOpen, onClose }) => {
         fetchPendingRequests()
       }
     } catch (err) {
+      console.error('Exception in accept:', err);
       setMessage('Error accepting friend request.')
     } finally {
       setActionLoading(false)

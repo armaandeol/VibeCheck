@@ -10,6 +10,7 @@ const Navbar = () => {
   const [showNotifications, setShowNotifications] = useState(false)
   const [showAddFriends, setShowAddFriends] = useState(false)
   const [friendRequests, setFriendRequests] = useState([])
+  const [isSigningOut, setIsSigningOut] = useState(false)
 
   // Subscribe to pending friend requests
   useEffect(() => {
@@ -50,10 +51,18 @@ const Navbar = () => {
   const isActive = (path) => location.pathname === path
 
   const handleSignOut = async () => {
+    if (isSigningOut) return // Prevent multiple sign out attempts
+    
+    setIsSigningOut(true)
     try {
       await signOut()
+      // Close any open modals/dropdowns
+      setShowNotifications(false)
+      setShowAddFriends(false)
     } catch (error) {
       console.error('Error signing out:', error)
+    } finally {
+      setIsSigningOut(false)
     }
   }
 
@@ -189,9 +198,14 @@ const Navbar = () => {
                 </div>
                 <button
                   onClick={handleSignOut}
-                  className="text-sm text-gray-300 hover:text-white transition-colors"
+                  disabled={isSigningOut}
+                  className={`text-sm transition-colors ${
+                    isSigningOut 
+                      ? 'text-gray-500 cursor-not-allowed' 
+                      : 'text-gray-300 hover:text-white'
+                  }`}
                 >
-                  Sign Out
+                  {isSigningOut ? 'Signing Out...' : 'Sign Out'}
                 </button>
               </div>
             ) : (
