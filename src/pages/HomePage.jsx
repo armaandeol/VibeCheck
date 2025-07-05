@@ -13,7 +13,6 @@ import SpotifyButton from '../components/SpotifyButton'
 import SpotifySection from '../components/SpotifySection'
 import { AnimatedList } from '../components/Animatedlist'
 import { motion, AnimatePresence } from 'framer-motion';
-import Footer from '../components/Footer'
 
 const featureList = [
   {
@@ -541,9 +540,6 @@ const HomePage = () => {
           </SpotifyCard>
         )}
       </div>
-      
-      {/* Add Footer at the bottom */}
-      <Footer />
       
       {/* Keep the chat popup outside the main content */}
       {showChat && (

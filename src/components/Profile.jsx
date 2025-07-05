@@ -5,7 +5,8 @@ import SpotifyService from '../lib/spotify';
 import { supabase } from '../lib/supabase';
 
 const Profile = ({ isSpotifyConnected, spotifyProfile, spotifyTopArtists, spotifyTopTracks }) => {
-  const { user, userProfile, updateProfile, updateTopArtists, updateTopSongs, addFriend, removeFriend, getFriends, searchUserByEmail, refreshProfile } = useAuth();
+  console.log('Profile component props:', { isSpotifyConnected, spotifyProfile, spotifyTopArtists, spotifyTopTracks });
+  const { user, userProfile, updateProfile, updateTopArtists, updateTopSongs, addFriend, removeFriend, getFriends, getAllFriendRelationships, searchUserByEmail, refreshProfile, acceptFriendRequest, rejectFriendRequest, cancelFriendRequest } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     name: '',
@@ -13,6 +14,7 @@ const Profile = ({ isSpotifyConnected, spotifyProfile, spotifyTopArtists, spotif
     top_songs: []
   });
   const [friends, setFriends] = useState([]);
+  const [friendRelationships, setFriendRelationships] = useState([]);
   const [friendEmail, setFriendEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -29,12 +31,19 @@ const Profile = ({ isSpotifyConnected, spotifyProfile, spotifyTopArtists, spotif
 
   useEffect(() => {
     loadFriends();
+    loadFriendRelationships();
     if (!user) return;
     // Real-time subscription for friends table
     const subscription = supabase
       .channel('profile_friends')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'friends', filter: `user_id=eq.${user.id}` }, loadFriends)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'friends', filter: `friend_id=eq.${user.id}` }, loadFriends)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friends', filter: `user_id=eq.${user.id}` }, () => {
+        loadFriends();
+        loadFriendRelationships();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friends', filter: `friend_id=eq.${user.id}` }, () => {
+        loadFriends();
+        loadFriendRelationships();
+      })
       .subscribe();
     return () => {
       if (subscription) supabase.removeChannel(subscription);
@@ -47,6 +56,15 @@ const Profile = ({ isSpotifyConnected, spotifyProfile, spotifyTopArtists, spotif
       setFriends(data || []);
     } catch (error) {
       console.error('Error loading friends:', error);
+    }
+  };
+
+  const loadFriendRelationships = async () => {
+    try {
+      const { data } = await getAllFriendRelationships();
+      setFriendRelationships(data || []);
+    } catch (error) {
+      console.error('Error loading friend relationships:', error);
     }
   };
 
@@ -105,9 +123,68 @@ const Profile = ({ isSpotifyConnected, spotifyProfile, spotifyTopArtists, spotif
       } else {
         setMessage('Friend removed successfully!');
         await loadFriends();
+        await loadFriendRelationships();
       }
     } catch (error) {
       setMessage(`Error removing friend: ${error.message}`);
+    } finally {
+      setLoading(false);
+      setTimeout(() => setMessage(''), 4000);
+    }
+  };
+
+  const handleAcceptFriendRequest = async (requestId) => {
+    setLoading(true);
+    setMessage('');
+    try {
+      const { error } = await acceptFriendRequest(requestId);
+      if (error) {
+        setMessage(`Error accepting friend request: ${error.message}`);
+      } else {
+        setMessage('Friend request accepted!');
+        await loadFriends();
+        await loadFriendRelationships();
+      }
+    } catch (error) {
+      setMessage(`Error accepting friend request: ${error.message}`);
+    } finally {
+      setLoading(false);
+      setTimeout(() => setMessage(''), 4000);
+    }
+  };
+
+  const handleRejectFriendRequest = async (requestId) => {
+    setLoading(true);
+    setMessage('');
+    try {
+      const { error } = await rejectFriendRequest(requestId);
+      if (error) {
+        setMessage(`Error rejecting friend request: ${error.message}`);
+      } else {
+        setMessage('Friend request rejected.');
+        await loadFriendRelationships();
+      }
+    } catch (error) {
+      setMessage(`Error rejecting friend request: ${error.message}`);
+    } finally {
+      setLoading(false);
+      setTimeout(() => setMessage(''), 4000);
+    }
+  };
+
+  const handleCancelFriendRequest = async (requestId) => {
+    setLoading(true);
+    setMessage('');
+    try {
+      const { error } = await cancelFriendRequest(requestId);
+      if (error) {
+        setMessage(`Error canceling friend request: ${error.message}`);
+      } else {
+        setMessage('Friend request canceled.');
+        await loadFriendRelationships();
+      }
+    } catch (error) {
+      setMessage(`Error canceling friend request: ${error.message}`);
     } finally {
       setLoading(false);
       setTimeout(() => setMessage(''), 4000);
@@ -129,7 +206,10 @@ const Profile = ({ isSpotifyConnected, spotifyProfile, spotifyTopArtists, spotif
     setEditForm(prev => ({ ...prev, [field]: newArray }));
   };
 
+  console.log('Profile component render check:', { user: !!user, userProfile: !!userProfile, userData: user, profileData: userProfile });
+  
   if (!user || !userProfile) {
+    console.log('Profile component: Showing loading state');
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
         <div className="text-white text-center">
@@ -366,7 +446,7 @@ const Profile = ({ isSpotifyConnected, spotifyProfile, spotifyTopArtists, spotif
         {/* Friends Section */}
         <div className="card-glass">
           <div className="p-6">
-            <h2 className="text-2xl font-bold text-white mb-6">Friends</h2>
+            <h2 className="text-2xl font-bold text-white mb-6">Friends & Requests</h2>
             
             {/* Add Friend Form */}
             <form onSubmit={handleAddFriend} className="mb-6">
@@ -388,35 +468,80 @@ const Profile = ({ isSpotifyConnected, spotifyProfile, spotifyTopArtists, spotif
               </div>
             </form>
 
-            {/* Friends List */}
+            {/* Friend Relationships List */}
             <div className="space-y-3">
-              {friends.length ? (
-                friends.map((friend) => (
-                  <div key={friend.friend_id} className="bg-slate-800/50 border border-slate-600 rounded-lg p-4 flex justify-between items-center">
+              {friendRelationships.length ? (
+                friendRelationships.map((relationship) => (
+                  <div key={relationship.id} className="bg-slate-800/50 border border-slate-600 rounded-lg p-4 flex justify-between items-center">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
-                        {friend.friend_avatar_url ? (
-                          <img src={friend.friend_avatar_url} alt={friend.friend_name} className="w-full h-full rounded-full object-cover" />
+                        {relationship.other_user.avatar_url ? (
+                          <img src={relationship.other_user.avatar_url} alt={relationship.other_user.name} className="w-full h-full rounded-full object-cover" />
                         ) : (
-                          friend.friend_name?.charAt(0) || friend.friend_email?.charAt(0) || 'F'
+                          relationship.other_user.name?.charAt(0) || relationship.other_user.email?.charAt(0) || 'U'
                         )}
                       </div>
                       <div>
-                        <h3 className="text-white font-medium">{friend.friend_name || 'User'}</h3>
-                        <p className="text-blue-300 text-sm">{friend.friend_email}</p>
+                        <h3 className="text-white font-medium">{relationship.other_user.name || 'User'}</h3>
+                        <p className="text-blue-300 text-sm">{relationship.other_user.email}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {relationship.status === 'accepted' && (
+                            <span className="bg-green-600/30 text-green-300 px-2 py-1 rounded-full text-xs">Friend</span>
+                          )}
+                          {relationship.status === 'pending' && relationship.isCurrentUserSender && (
+                            <span className="bg-yellow-600/30 text-yellow-300 px-2 py-1 rounded-full text-xs">Request Sent</span>
+                          )}
+                          {relationship.status === 'pending' && !relationship.isCurrentUserSender && (
+                            <span className="bg-blue-600/30 text-blue-300 px-2 py-1 rounded-full text-xs">Request Received</span>
+                          )}
+                          {relationship.status === 'cancelled' && (
+                            <span className="bg-gray-600/30 text-gray-300 px-2 py-1 rounded-full text-xs">Cancelled</span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleRemoveFriend(friend.friend_id)}
-                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg transition-colors duration-300 text-sm disabled:opacity-50"
-                      disabled={loading}
-                    >
-                      {loading ? <span className="spinner w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> : 'Remove'}
-                    </button>
+                    <div className="flex gap-2">
+                      {relationship.status === 'accepted' && (
+                        <button
+                          onClick={() => handleRemoveFriend(relationship.other_user.id)}
+                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg transition-colors duration-300 text-sm disabled:opacity-50"
+                          disabled={loading}
+                        >
+                          {loading ? <span className="spinner w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> : 'Remove'}
+                        </button>
+                      )}
+                      {relationship.status === 'pending' && relationship.isCurrentUserSender && (
+                        <button
+                          onClick={() => handleCancelFriendRequest(relationship.id)}
+                          className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded-lg transition-colors duration-300 text-sm disabled:opacity-50"
+                          disabled={loading}
+                        >
+                          {loading ? <span className="spinner w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> : 'Withdraw'}
+                        </button>
+                      )}
+                      {relationship.status === 'pending' && !relationship.isCurrentUserSender && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleAcceptFriendRequest(relationship.id)}
+                            className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg transition-colors duration-300 text-sm disabled:opacity-50"
+                            disabled={loading}
+                          >
+                            {loading ? <span className="spinner w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> : 'Accept'}
+                          </button>
+                          <button
+                            onClick={() => handleRejectFriendRequest(relationship.id)}
+                            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg transition-colors duration-300 text-sm disabled:opacity-50"
+                            disabled={loading}
+                          >
+                            {loading ? <span className="spinner w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> : 'Reject'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))
               ) : (
-                <p className="text-gray-400 text-center py-8">No friends added yet. Add friends by their email to start connecting!</p>
+                <p className="text-gray-400 text-center py-8">No friends or requests yet. Add friends by their email to start connecting!</p>
               )}
             </div>
           </div>
