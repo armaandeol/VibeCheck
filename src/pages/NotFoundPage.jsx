@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import SpotifyCard from '../components/SpotifyCard'
 import SpotifyButton from '../components/SpotifyButton'
@@ -9,6 +9,7 @@ function NotFoundPage() {
   const [volume, setVolume] = useState(0.5)
   const [isAudioPlaying, setIsAudioPlaying] = useState(false)
   const userInteracted = useRef(false)
+  const navigate = useNavigate();
 
   // Preload media and attempt autoplay
   useEffect(() => {
@@ -68,6 +69,10 @@ function NotFoundPage() {
       document.addEventListener(event, handleInteraction, { once: true })
     })
 
+    // Prevent scrolling on NotFoundPage mount
+    document.body.style.overflow = 'hidden'
+    document.documentElement.style.overflow = 'hidden'
+
     return () => {
       events.forEach(event => {
         document.removeEventListener(event, handleInteraction)
@@ -79,6 +84,10 @@ function NotFoundPage() {
         audioRef.current.removeEventListener('pause', () => setIsAudioPlaying(false))
         audioRef.current.removeEventListener('ended', () => setIsAudioPlaying(false))
       }
+
+      // Restore scrolling when unmounting
+      document.body.style.overflow = ''
+      document.documentElement.style.overflow = ''
     }
   }, [])
 
@@ -98,7 +107,7 @@ function NotFoundPage() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-black via-gray-900 to-black pt-16">
+    <div className="fixed inset-0 w-screen h-screen overflow-hidden bg-gradient-to-br from-black via-gray-900 to-black">
       {/* Background Video (optimized) */}
       <video
         ref={videoRef}
@@ -125,13 +134,13 @@ function NotFoundPage() {
       </audio>
 
       {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black bg-opacity-60"></div>
+      <div className="absolute inset-0 bg-black bg-opacity-60 pointer-events-none"></div>
 
       {/* Content */}
-      <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+      <div className="relative z-10 flex items-center justify-center w-full h-full p-4">
         <SpotifyCard className="text-center max-w-lg mx-auto">
-          <h1 className="text-4xl sm:text-6xl font-bold mb-4 drop-shadow-lg">Track Not Found</h1>
-          <p className="text-lg sm:text-xl mb-8 drop-shadow-md max-w-md mx-auto">
+          <h1 className="text-4xl sm:text-6xl font-bold mb-4 drop-shadow-lg text-white">Track Not Found</h1>
+          <p className="text-lg sm:text-xl mb-8 drop-shadow-md max-w-md mx-auto text-white">
             🎵 Looks like this page skipped a beat!
           </p>
           
@@ -157,12 +166,18 @@ function NotFoundPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <SpotifyButton as={Link} to="/" className="bg-gradient-to-r from-purple-600 to-blue-600 text-white">
+            <button
+              onClick={() => navigate('/')}
+              className="bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold rounded-full px-6 py-3 transition-all duration-200 shadow-md hover:from-purple-500 hover:to-blue-700"
+            >
               🏠 Home
-            </SpotifyButton>
-            <SpotifyButton as={Link} to="/about" className="bg-white bg-opacity-20 text-white hover:bg-opacity-30 backdrop-blur-sm">
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="bg-white bg-opacity-20 text-white font-bold rounded-full px-6 py-3 transition-all duration-200 shadow-md hover:bg-opacity-30 backdrop-blur-sm"
+            >
               🎵 Discover
-            </SpotifyButton>
+            </button>
           </div>
         </SpotifyCard>
       </div>

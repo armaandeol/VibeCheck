@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SpotifyService from '../lib/spotify';
-import { useAuth } from '../hooks/useAuth';
 
 const SpotifyCallback = () => {
   const [status, setStatus] = useState('Processing...');
   const [error, setError] = useState(null);
   const navigate = useNavigate();
-  const { user } = useAuth();
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -25,19 +23,12 @@ const SpotifyCallback = () => {
           throw new Error('No authorization code received from Spotify');
         }
 
-        if (!user) {
-          throw new Error('User not authenticated');
-        }
-
         setStatus('Exchanging authorization code for access token...');
 
         // Exchange code for access token
         const tokens = await SpotifyService.getAccessToken(code);
         
-        // Store tokens in database
-        await SpotifyService.storeTokensInDatabase(tokens, user.id);
-        
-        // Also store in localStorage for backward compatibility
+        // Store tokens
         SpotifyService.storeTokens(tokens);
 
         setStatus('Getting your Spotify profile...');
@@ -62,10 +53,8 @@ const SpotifyCallback = () => {
       }
     };
 
-    if (user) {
-      handleCallback();
-    }
-  }, [navigate, user]);
+    handleCallback();
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
