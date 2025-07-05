@@ -1,15 +1,24 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
-const WeatherSelector = ({ latitude, longitude }) => {
+const WeatherSelector = ({ latitude, longitude, onWeatherData }) => {
   const [weather, setWeather] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const lastFetchRef = useRef(0)
+  const fetchTimeoutRef = useRef(null)
 
   // OpenWeatherMap API key - add this to your .env.local file
   const API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY 
 
   const fetchWeather = async (lat, lon) => {
+    // Prevent fetching if coordinates are missing
     if (!lat || !lon) return
+
+    // Check if we've fetched recently (within last 5 minutes)
+    const now = Date.now()
+    if (now - lastFetchRef.current < 5 * 60 * 1000 && weather) {
+      return
+    }
 
     setLoading(true)
     setError(null)
@@ -25,9 +34,13 @@ const WeatherSelector = ({ latitude, longitude }) => {
 
       const data = await response.json()
       setWeather(data)
+      onWeatherData?.(data)
+      lastFetchRef.current = now
     } catch (err) {
       setError(err.message)
       console.error('Error fetching weather:', err)
+      setWeather(null)
+      onWeatherData?.(null)
     } finally {
       setLoading(false)
     }
@@ -35,10 +48,25 @@ const WeatherSelector = ({ latitude, longitude }) => {
 
   // Fetch weather when coordinates change
   useEffect(() => {
-    if (latitude && longitude) {
-      fetchWeather(latitude, longitude)
+    if (!latitude || !longitude) {
+      setWeather(null)
+      onWeatherData?.(null)
+      return
     }
-  }, [latitude, longitude])
+
+    // Fetch immediately if we don't have weather data
+    if (!weather) {
+      fetchWeather(latitude, longitude)
+    } else {
+      // Otherwise, check if we need to update based on time
+      const now = Date.now()
+      if (now - lastFetchRef.current >= 5 * 60 * 1000) {
+        fetchWeather(latitude, longitude)
+      }
+    }
+
+    // No need for cleanup since we're not using timeouts anymore
+  }, [latitude, longitude, weather]) // Include weather in dependencies to handle updates
 
   const getWeatherIcon = (iconCode) => {
     const iconMap = {
