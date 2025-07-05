@@ -9,6 +9,7 @@ import NotFoundPage from './pages/NotFoundPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import PublicRoute from './components/PublicRoute'
 import RootRoute from './components/RootRoute'
+import SpotifyCallback from './components/SpotifyCallback'
 
 function App() {
   return (
@@ -45,6 +46,19 @@ function App() {
                   <div className="pt-16">
                     <ProtectedRoute>
                       <ProfilePage />
+                    </ProtectedRoute>
+                  </div>
+                </>
+              } 
+            />
+            <Route 
+              path="/callback" 
+              element={
+                <>
+                  <Navbar />
+                  <div className="pt-16">
+                    <ProtectedRoute>
+                      <SpotifyCallback />
                     </ProtectedRoute>
                   </div>
                 </>

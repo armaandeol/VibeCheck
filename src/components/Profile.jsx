@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import SpotifySection from './SpotifySection';
 
-const Profile = () => {
+const Profile = ({ isSpotifyConnected, spotifyProfile, spotifyTopArtists, spotifyTopTracks }) => {
   const { user, userProfile, updateProfile, updateTopArtists, updateTopSongs, addFriend, removeFriend, getFriends, searchUserByEmail, refreshProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -169,7 +170,7 @@ const Profile = () => {
                   />
                 ) : (
                   <p className="text-white bg-slate-800/50 border border-slate-600 rounded-lg px-3 py-2">
-                    {userProfile.name || 'No name set'}
+                    {isSpotifyConnected && spotifyProfile?.display_name ? spotifyProfile.display_name : userProfile.name || 'No name set'}
                   </p>
                 )}
               </div>
@@ -177,7 +178,7 @@ const Profile = () => {
               <div>
                 <label className="block text-sm font-medium text-blue-300 mb-2">Email</label>
                 <p className="text-white bg-slate-800/50 border border-slate-600 rounded-lg px-3 py-2">
-                  {userProfile.email}
+                  {isSpotifyConnected && spotifyProfile?.email ? spotifyProfile.email : userProfile.email}
                 </p>
               </div>
 
@@ -227,7 +228,16 @@ const Profile = () => {
                 </div>
               ) : (
                 <div className="bg-slate-800/50 border border-slate-600 rounded-lg px-3 py-2">
-                  {userProfile.top_artists?.length ? (
+                  {isSpotifyConnected && spotifyTopArtists?.length ? (
+                    <div className="flex flex-wrap gap-2">
+                      {spotifyTopArtists.map((artist, index) => (
+                        <span key={index} className="bg-green-600/30 text-green-300 px-2 py-1 rounded-full text-sm flex items-center gap-1">
+                          {artist.name}
+                          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                        </span>
+                      ))}
+                    </div>
+                  ) : userProfile.top_artists?.length ? (
                     <div className="flex flex-wrap gap-2">
                       {userProfile.top_artists.map((artist, index) => (
                         <span key={index} className="bg-blue-600/30 text-blue-300 px-2 py-1 rounded-full text-sm">
@@ -273,7 +283,16 @@ const Profile = () => {
                 </div>
               ) : (
                 <div className="bg-slate-800/50 border border-slate-600 rounded-lg px-3 py-2">
-                  {userProfile.top_songs?.length ? (
+                  {isSpotifyConnected && spotifyTopTracks?.length ? (
+                    <div className="flex flex-wrap gap-2">
+                      {spotifyTopTracks.map((track, index) => (
+                        <span key={index} className="bg-green-600/30 text-green-300 px-2 py-1 rounded-full text-sm flex items-center gap-1">
+                          {track.name}
+                          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                        </span>
+                      ))}
+                    </div>
+                  ) : userProfile.top_songs?.length ? (
                     <div className="flex flex-wrap gap-2">
                       {userProfile.top_songs.map((song, index) => (
                         <span key={index} className="bg-purple-600/30 text-purple-300 px-2 py-1 rounded-full text-sm">
@@ -301,6 +320,9 @@ const Profile = () => {
             )}
           </div>
         </div>
+
+        {/* Spotify Section */}
+        <SpotifySection />
 
         {/* Friends Section */}
         <div className="card-glass">
