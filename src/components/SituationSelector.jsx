@@ -132,30 +132,30 @@ const SituationSelector = ({ onSituationChange }) => {
   return (
     <div 
       ref={containerRef}
-      className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-gray-200"
+      className="h-full flex flex-col"
     >
       <div className="text-center mb-6">
         <div className="text-4xl mb-4">🎬</div>
-        <h3 className="text-2xl font-bold text-gray-900 mb-3">Situation Selector</h3>
-        <p className="text-gray-600 mb-4">
+        <h3 className="text-xl font-bold spotify-text-primary mb-3">Situation Selector</h3>
+        <p className="spotify-text-secondary mb-6 leading-relaxed">
           Tell us what you're up to for more contextual recommendations
         </p>
-        <div className="flex flex-col sm:flex-row gap-2 justify-center">
+        <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
           <button
             onClick={() => setShowSituations(!showSituations)}
-            className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors font-semibold shadow-lg"
+            className="spotify-button-secondary"
           >
             {showSituations ? 'Hide Situations' : 'Show Situations'}
           </button>
-          <span className="text-sm text-gray-500 self-center italic">Optional</span>
+          <span className="spotify-badge-secondary">Optional</span>
         </div>
       </div>
 
       {showSituations && (
-        <div className="mt-6">
+        <div className="flex-1 flex flex-col">
           <div 
             ref={gridRef}
-            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-6"
+            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6"
           >
             {situations.map((situation, index) => (
               <button
@@ -165,26 +165,26 @@ const SituationSelector = ({ onSituationChange }) => {
                 onMouseEnter={() => handleMouseEnter(index)}
                 onMouseLeave={() => handleMouseLeave(index)}
                 className={`
-                  p-4 rounded-xl transition-all duration-200 transform
+                  p-4 rounded-xl transition-all duration-200 transform min-h-[80px] flex items-center
                   ${selectedSituation?.name === situation.name 
-                    ? `${situation.color} shadow-lg ring-4 ring-white/50` 
-                    : `${situation.color} hover:shadow-md`
+                    ? `${situation.color} shadow-lg ring-4 ring-[#1DB954]/50` 
+                    : `${situation.color} hover:shadow-md hover:scale-105`
                   }
-                  text-white font-medium text-left
+                  text-white font-medium
                 `}
               >
-                <div className="flex items-center gap-3">
-                  <div className="text-2xl">{situation.emoji}</div>
-                  <div className="text-sm font-semibold leading-tight">{situation.name}</div>
+                <div className="flex items-center gap-3 w-full">
+                  <div className="text-2xl flex-shrink-0">{situation.emoji}</div>
+                  <div className="text-xs sm:text-sm font-semibold leading-tight break-words flex-1">{situation.name}</div>
                 </div>
               </button>
             ))}
           </div>
 
-          <div className="flex gap-2 justify-center">
+          <div className="flex gap-3 justify-center">
             <button
               onClick={handleRandomSituation}
-              className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700 transition-colors"
+              className="spotify-badge-secondary hover:bg-[#1DB954] hover:text-black transition-colors cursor-pointer"
             >
               🎲 Random Situation
             </button>
@@ -194,7 +194,7 @@ const SituationSelector = ({ onSituationChange }) => {
                   setSelectedSituation(null)
                   if (onSituationChange) onSituationChange(null)
                 }}
-                className="bg-gray-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-600 transition-colors"
+                className="spotify-badge-secondary hover:bg-red-500 transition-colors cursor-pointer"
               >
                 🗑️ Clear Selection
               </button>
@@ -202,20 +202,20 @@ const SituationSelector = ({ onSituationChange }) => {
           </div>
 
           {selectedSituation && (
-            <div className="mt-6 p-4 bg-purple-50 rounded-lg">
-              <h4 className="font-semibold text-purple-800 mb-2">Selected Situation:</h4>
+            <div className="mt-6 p-4 spotify-card-gradient rounded-xl border border-[#404040]">
+              <h4 className="font-semibold spotify-text-primary mb-3">Selected Situation:</h4>
               <div className="flex items-center gap-3">
                 <div className="text-3xl" ref={emojiRef}>
                   {selectedSituation.emoji}
                 </div>
                 <div>
-                  <div className="text-gray-800 font-medium text-lg">{selectedSituation.name}</div>
-                  <div className="text-sm text-gray-600">
+                  <div className="spotify-text-primary font-medium text-lg">{selectedSituation.name}</div>
+                  <div className="spotify-text-secondary text-sm">
                     Great! We'll tailor content to match your current situation.
                   </div>
                 </div>
               </div>
-              <div className="mt-3 text-xs text-gray-600">
+              <div className="mt-3 text-xs spotify-text-muted">
                 <p>💡 <strong>Tip:</strong> Your situation context helps us provide more relevant recommendations</p>
               </div>
             </div>
@@ -224,8 +224,10 @@ const SituationSelector = ({ onSituationChange }) => {
       )}
 
       {!showSituations && (
-        <div className="text-center text-gray-500 text-sm">
-          <p>Skip this step if you prefer general recommendations</p>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center spotify-text-muted text-sm">
+            <p>Skip this step if you prefer general recommendations</p>
+          </div>
         </div>
       )}
     </div>

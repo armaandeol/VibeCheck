@@ -62,23 +62,23 @@ const Navbar = () => {
         <div className="flex items-center gap-4">
           {user ? (
             <>
-              <NavbarButton
-                variant="secondary"
+              <button
+                className="spotify-button-secondary"
                 onClick={() => setShowAddFriends(true)}
               >
                 Add Friends
-              </NavbarButton>
-              <NavbarButton
-                variant="primary"
+              </button>
+              <button
+                className="spotify-button"
                 onClick={handleSignOut}
                 disabled={isSigningOut}
               >
                 {isSigningOut ? 'Signing out...' : 'Sign out'}
-              </NavbarButton>
+              </button>
             </>
           ) : (
             <Link to="/login">
-              <NavbarButton variant="primary">Sign In</NavbarButton>
+              <button className="spotify-button">Sign In</button>
             </Link>
           )}
         </div>
@@ -110,30 +110,28 @@ const Navbar = () => {
           ))}
           {user ? (
             <div className="flex flex-col gap-4">
-              <NavbarButton
-                variant="secondary"
-                className="w-full"
+              <button
+                className="spotify-button-secondary w-full"
                 onClick={() => {
                   setShowAddFriends(true);
                   setIsMobileMenuOpen(false);
                 }}
               >
                 Add Friends
-              </NavbarButton>
-              <NavbarButton
-                variant="primary"
-                className="w-full"
+              </button>
+              <button
+                className="spotify-button w-full"
                 onClick={handleSignOut}
                 disabled={isSigningOut}
               >
                 {isSigningOut ? 'Signing out...' : 'Sign out'}
-              </NavbarButton>
+              </button>
             </div>
           ) : (
             <Link to="/login" className="w-full" onClick={() => setIsMobileMenuOpen(false)}>
-              <NavbarButton variant="primary" className="w-full">
+              <button className="spotify-button w-full">
                 Sign In
-              </NavbarButton>
+              </button>
             </Link>
           )}
         </MobileNavMenu>
