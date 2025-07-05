@@ -46,24 +46,24 @@ const LocationSelector = ({ onLocationChange }) => {
   }
 
   return (
-    <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-gray-200">
+    <div className="h-full flex flex-col">
       <div className="text-center mb-6">
         <div className="text-4xl mb-4">🌍</div>
-        <h3 className="text-2xl font-bold text-gray-900 mb-3">Location Selector</h3>
-        <p className="text-gray-600 mb-4">
+        <h3 className="text-xl font-bold spotify-text-primary mb-3">Location Selector</h3>
+        <p className="spotify-text-secondary mb-6 leading-relaxed">
           Click on the map to select your location and see the coordinates
         </p>
         <button
           onClick={() => setShowMap(!showMap)}
-          className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors font-semibold shadow-lg"
+          className="spotify-button-secondary"
         >
           {showMap ? 'Hide Map' : 'Show Map'}
         </button>
       </div>
 
       {showMap && (
-        <div className="mt-6">
-          <div className="h-96 w-full rounded-lg overflow-hidden shadow-2xl border-2 border-gray-300 relative z-10">
+        <div className="flex-1 flex flex-col">
+          <div className="h-80 w-full rounded-xl overflow-hidden shadow-lg border border-[#404040] relative z-10">
             <MapContainer
               center={mapCenter}
               zoom={13}
@@ -93,17 +93,17 @@ const LocationSelector = ({ onLocationChange }) => {
             </MapContainer>
           </div>
           
-          <div className="mt-4 flex gap-2 justify-center">
+          <div className="mt-4 flex gap-3 justify-center">
             <button
               onClick={handleRandomLocation}
-              className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700 transition-colors"
+              className="spotify-badge-secondary hover:bg-[#1DB954] hover:text-black transition-colors cursor-pointer"
             >
               📍 Pin Random Location
             </button>
             {position && (
               <button
                 onClick={() => setPosition(null)}
-                className="bg-gray-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-600 transition-colors"
+                className="spotify-badge-secondary hover:bg-red-500 transition-colors cursor-pointer"
               >
                 🗑️ Clear Selection
               </button>
@@ -111,17 +111,19 @@ const LocationSelector = ({ onLocationChange }) => {
           </div>
           
           {position && (
-            <div className="mt-4 p-4 bg-purple-50 rounded-lg">
-              <h4 className="font-semibold text-purple-800 mb-2">Selected Coordinates:</h4>
+            <div className="mt-4 p-4 spotify-card-gradient rounded-xl border border-[#404040]">
+              <h4 className="font-semibold spotify-text-primary mb-3">Selected Coordinates:</h4>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="font-medium">Latitude:</span> {position.lat.toFixed(6)}
+                  <span className="spotify-text-secondary font-medium">Latitude:</span>
+                  <div className="spotify-text-primary font-mono">{position.lat.toFixed(6)}</div>
                 </div>
                 <div>
-                  <span className="font-medium">Longitude:</span> {position.lng.toFixed(6)}
+                  <span className="spotify-text-secondary font-medium">Longitude:</span>
+                  <div className="spotify-text-primary font-mono">{position.lng.toFixed(6)}</div>
                 </div>
               </div>
-              <div className="mt-3 text-xs text-gray-600">
+              <div className="mt-3 text-xs spotify-text-muted">
                 <p>💡 <strong>Tip:</strong> Click anywhere on the map to select a new location</p>
               </div>
             </div>

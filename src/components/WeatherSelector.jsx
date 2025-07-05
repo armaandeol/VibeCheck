@@ -92,11 +92,11 @@ const WeatherSelector = ({ latitude, longitude, onWeatherData }) => {
 
   if (!latitude || !longitude) {
     return (
-      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-gray-200">
+      <div className="h-full flex flex-col justify-center">
         <div className="text-center">
           <div className="text-4xl mb-4">🌤️</div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-3">Weather Information</h3>
-          <p className="text-gray-600">
+          <h3 className="text-xl font-bold spotify-text-primary mb-3">Weather Information</h3>
+          <p className="spotify-text-secondary leading-relaxed">
             Please select a location on the map to see weather information.
           </p>
         </div>
@@ -105,31 +105,31 @@ const WeatherSelector = ({ latitude, longitude, onWeatherData }) => {
   }
 
   return (
-    <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-gray-200">
+    <div className="h-full flex flex-col">
       <div className="text-center mb-6">
-        <h3 className="text-2xl font-bold text-gray-900 mb-3">Weather Information</h3>
+        <h3 className="text-xl font-bold spotify-text-primary mb-3">Weather Information</h3>
         {weather && (
-          <p className="text-gray-600 text-sm">
+          <p className="spotify-text-secondary text-sm">
             Current weather for {weather.name}, {weather.sys.country}
           </p>
         )}
       </div>
 
       {loading && (
-        <div className="text-center py-8">
+        <div className="flex-1 flex flex-col justify-center text-center">
           <div className="animate-spin text-4xl mb-4">🌀</div>
-          <p className="text-gray-600">Fetching weather data...</p>
+          <p className="spotify-text-secondary">Fetching weather data...</p>
         </div>
       )}
 
       {error && (
-        <div className="text-center py-8">
+        <div className="flex-1 flex flex-col justify-center text-center">
           <div className="text-4xl mb-4">⚠️</div>
-          <p className="text-red-600 mb-2">Failed to fetch weather data</p>
-          <p className="text-gray-600 text-sm">{error}</p>
+          <p className="text-red-400 mb-2 font-semibold">Failed to fetch weather data</p>
+          <p className="spotify-text-secondary text-sm mb-4">{error}</p>
           <button
             onClick={() => fetchWeather(latitude, longitude)}
-            className="mt-4 bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700 transition-colors font-semibold shadow-lg"
+            className="spotify-button-secondary"
           >
             🔄 Retry
           </button>
@@ -137,53 +137,53 @@ const WeatherSelector = ({ latitude, longitude, onWeatherData }) => {
       )}
 
       {weather && !loading && !error && (
-        <div className="space-y-6">
+        <div className="flex-1 flex flex-col space-y-6">
           {/* Main weather info */}
           <div className="text-center">
-            <div className="text-6xl mb-2">
+            <div className="text-6xl mb-3">
               {getWeatherIcon(weather.weather[0].icon)}
             </div>
-            <h4 className="text-2xl font-bold text-gray-900 mb-1">
+            <h4 className="text-3xl font-bold spotify-text-primary mb-2">
               {formatTemperature(weather.main.temp)}°C
             </h4>
-            <p className="text-lg text-gray-700 capitalize mb-2">
+            <p className="text-lg spotify-text-secondary capitalize mb-2">
               {weather.weather[0].description}
             </p>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm spotify-text-muted">
               in {weather.name}, {weather.sys.country}
             </p>
           </div>
 
           {/* Weather details */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-blue-50 p-4 rounded-lg text-center">
+            <div className="spotify-card-gradient p-4 rounded-xl text-center border border-[#404040]">
               <div className="text-2xl mb-2">🌡️</div>
-              <p className="text-sm text-gray-600 mb-1">Feels like</p>
-              <p className="font-semibold text-gray-900">
+              <p className="text-sm spotify-text-secondary mb-1">Feels like</p>
+              <p className="font-semibold spotify-text-primary">
                 {formatTemperature(weather.main.feels_like)}°C
               </p>
             </div>
 
-            <div className="bg-green-50 p-4 rounded-lg text-center">
+            <div className="spotify-card-gradient p-4 rounded-xl text-center border border-[#404040]">
               <div className="text-2xl mb-2">💧</div>
-              <p className="text-sm text-gray-600 mb-1">Humidity</p>
-              <p className="font-semibold text-gray-900">
+              <p className="text-sm spotify-text-secondary mb-1">Humidity</p>
+              <p className="font-semibold spotify-text-primary">
                 {weather.main.humidity}%
               </p>
             </div>
 
-            <div className="bg-yellow-50 p-4 rounded-lg text-center">
+            <div className="spotify-card-gradient p-4 rounded-xl text-center border border-[#404040]">
               <div className="text-2xl mb-2">💨</div>
-              <p className="text-sm text-gray-600 mb-1">Wind Speed</p>
-              <p className="font-semibold text-gray-900">
+              <p className="text-sm spotify-text-secondary mb-1">Wind Speed</p>
+              <p className="font-semibold spotify-text-primary">
                 {formatWindSpeed(weather.wind.speed)} km/h
               </p>
             </div>
 
-            <div className="bg-purple-50 p-4 rounded-lg text-center">
+            <div className="spotify-card-gradient p-4 rounded-xl text-center border border-[#404040]">
               <div className="text-2xl mb-2">📊</div>
-              <p className="text-sm text-gray-600 mb-1">Pressure</p>
-              <p className="font-semibold text-gray-900">
+              <p className="text-sm spotify-text-secondary mb-1">Pressure</p>
+              <p className="font-semibold spotify-text-primary">
                 {weather.main.pressure} hPa
               </p>
             </div>
@@ -191,16 +191,16 @@ const WeatherSelector = ({ latitude, longitude, onWeatherData }) => {
 
           {/* Additional info */}
           {weather.visibility && (
-            <div className="text-center text-sm text-gray-600">
+            <div className="text-center text-sm spotify-text-secondary">
               <span className="font-medium">Visibility:</span> {(weather.visibility / 1000).toFixed(1)} km
             </div>
           )}
 
           {/* Refresh button */}
-          <div className="text-center">
+          <div className="text-center mt-auto">
             <button
               onClick={() => fetchWeather(latitude, longitude)}
-              className="bg-purple-600 text-white px-6 py-3 rounded-lg text-sm hover:bg-purple-700 transition-colors font-semibold shadow-lg"
+              className="spotify-button-secondary"
             >
               🔄 Refresh Weather
             </button>

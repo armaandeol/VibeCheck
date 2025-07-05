@@ -112,27 +112,27 @@ const MoodSelector = ({ onMoodChange }) => {
   return (
     <div 
       ref={containerRef}
-      className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-gray-200"
+      className="h-full flex flex-col"
     >
       <div className="text-center mb-6">
         <div className="text-4xl mb-4">🎭</div>
-        <h3 className="text-2xl font-bold text-gray-900 mb-3">Mood Selector</h3>
-        <p className="text-gray-600 mb-4">
+        <h3 className="text-xl font-bold spotify-text-primary mb-3">Mood Selector</h3>
+        <p className="spotify-text-secondary mb-6 leading-relaxed">
           Choose your current mood to get personalized recommendations
         </p>
         <button
           onClick={() => setShowMoods(!showMoods)}
-          className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors font-semibold shadow-lg"
+          className="spotify-button-secondary"
         >
           {showMoods ? 'Hide Moods' : 'Show Moods'}
         </button>
       </div>
 
       {showMoods && (
-        <div className="mt-6">
+        <div className="flex-1 flex flex-col">
           <div 
             ref={moodGridRef}
-            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-6"
+            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-6"
           >
             {moods.map((mood, index) => (
               <button
@@ -158,31 +158,31 @@ const MoodSelector = ({ onMoodChange }) => {
                   }
                 }}
                 className={`
-                  p-4 rounded-xl transition-all duration-200 transform
+                  p-4 rounded-xl transition-all duration-200 transform min-h-[100px] flex flex-col items-center justify-center
                   ${selectedMood?.name === mood.name 
-                    ? `${mood.color} shadow-lg ring-4 ring-white/50` 
-                    : `${mood.color} hover:shadow-md`
+                    ? `${mood.color} shadow-lg ring-4 ring-[#1DB954]/50` 
+                    : `${mood.color} hover:shadow-md hover:scale-105`
                   }
                   text-white font-medium
                 `}
               >
                 <div className="text-2xl mb-2">{mood.emoji}</div>
-                <div className="text-sm font-semibold">{mood.name}</div>
+                <div className="text-xs sm:text-sm font-semibold text-center leading-tight break-words px-1">{mood.name}</div>
               </button>
             ))}
           </div>
 
-          <div className="flex gap-2 justify-center">
+          <div className="flex gap-3 justify-center">
             <button
               onClick={handleRandomMood}
-              className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700 transition-colors"
+              className="spotify-badge-secondary hover:bg-[#1DB954] hover:text-black transition-colors cursor-pointer"
             >
               🎲 Random Mood
             </button>
             {selectedMood && (
               <button
                 onClick={() => setSelectedMood(null)}
-                className="bg-gray-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-600 transition-colors"
+                className="spotify-badge-secondary hover:bg-red-500 transition-colors cursor-pointer"
               >
                 🗑️ Clear Selection
               </button>
@@ -190,14 +190,14 @@ const MoodSelector = ({ onMoodChange }) => {
           </div>
 
           {selectedMood && (
-            <div className="mt-6 p-4 bg-purple-50 rounded-lg">
-              <h4 className="font-semibold text-purple-800 mb-2">Selected Mood:</h4>
+            <div className="mt-6 p-4 spotify-card-gradient rounded-xl border border-[#404040]">
+              <h4 className="font-semibold spotify-text-primary mb-3">Selected Mood:</h4>
               <div className="flex items-center gap-3">
                 <div className="text-3xl" ref={selectedEmojiRef}>
                   {selectedMood.emoji}
                 </div>
                 <div>
-                  <div className="text-gray-800 font-medium text-lg">{selectedMood.name}</div>
+                  <div className="spotify-text-primary font-medium text-lg">{selectedMood.name}</div>
                   <div className="text-sm text-gray-600">
                     Perfect! We'll curate content based on your {selectedMood.name.toLowerCase()} mood.
                   </div>

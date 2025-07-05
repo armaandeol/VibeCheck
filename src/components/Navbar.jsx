@@ -62,23 +62,33 @@ const Navbar = () => {
         <div className="flex items-center gap-4">
           {user ? (
             <>
-              <NavbarButton
-                variant="secondary"
+              {/* Notification Button */}
+              <button
+                className="spotify-button-secondary flex items-center gap-2"
+                onClick={() => setShowNotifications(!showNotifications)}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM10.5 3.75a6 6 0 0 1 6 6v4.5l2.086 2.086a1 1 0 0 1-1.414 1.414L15 15.5H4.5a1 1 0 0 1-1.414-1.414L5.5 14.25V9.75a6 6 0 0 1 6-6z" />
+                </svg>
+                Notifications
+              </button>
+              <button
+                className="spotify-button-secondary"
                 onClick={() => setShowAddFriends(true)}
               >
                 Add Friends
-              </NavbarButton>
-              <NavbarButton
-                variant="primary"
+              </button>
+              <button
+                className="spotify-button"
                 onClick={handleSignOut}
                 disabled={isSigningOut}
               >
                 {isSigningOut ? 'Signing out...' : 'Sign out'}
-              </NavbarButton>
+              </button>
             </>
           ) : (
             <Link to="/login">
-              <NavbarButton variant="primary">Sign In</NavbarButton>
+              <button className="spotify-button">Sign In</button>
             </Link>
           )}
         </div>
@@ -110,30 +120,40 @@ const Navbar = () => {
           ))}
           {user ? (
             <div className="flex flex-col gap-4">
-              <NavbarButton
-                variant="secondary"
-                className="w-full"
+              <button
+                className="spotify-button-secondary w-full flex items-center justify-center gap-2"
+                onClick={() => {
+                  setShowNotifications(!showNotifications);
+                  setIsMobileMenuOpen(false);
+                }}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM10.5 3.75a6 6 0 0 1 6 6v4.5l2.086 2.086a1 1 0 0 1-1.414 1.414L15 15.5H4.5a1 1 0 0 1-1.414-1.414L5.5 14.25V9.75a6 6 0 0 1 6-6z" />
+                </svg>
+                Notifications
+              </button>
+              <button
+                className="spotify-button-secondary w-full"
                 onClick={() => {
                   setShowAddFriends(true);
                   setIsMobileMenuOpen(false);
                 }}
               >
                 Add Friends
-              </NavbarButton>
-              <NavbarButton
-                variant="primary"
-                className="w-full"
+              </button>
+              <button
+                className="spotify-button w-full"
                 onClick={handleSignOut}
                 disabled={isSigningOut}
               >
                 {isSigningOut ? 'Signing out...' : 'Sign out'}
-              </NavbarButton>
+              </button>
             </div>
           ) : (
             <Link to="/login" className="w-full" onClick={() => setIsMobileMenuOpen(false)}>
-              <NavbarButton variant="primary" className="w-full">
+              <button className="spotify-button w-full">
                 Sign In
-              </NavbarButton>
+              </button>
             </Link>
           )}
         </MobileNavMenu>
@@ -141,7 +161,7 @@ const Navbar = () => {
 
       {/* Add Friends Modal */}
       {showAddFriends && (
-        <AddFriends onClose={() => setShowAddFriends(false)} />
+        <AddFriends isOpen={showAddFriends} onClose={() => setShowAddFriends(false)} />
       )}
     </ResizableNavbar>
   );

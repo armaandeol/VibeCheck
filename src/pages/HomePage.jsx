@@ -379,38 +379,38 @@ const HomePage = () => {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black text-white pt-16">
+    <div className="min-h-screen spotify-bg-gradient text-white pt-16">
       {/* Professional Weather Animation Background */}
       {weatherData && <WeatherAnimation weatherData={weatherData} />}
       
-      <div className="max-w-4xl mx-auto px-6 py-12">
+      <div className="max-w-6xl mx-auto px-6 py-12">
         {/* Spotify Connection Status */}
-        <SpotifySection className="mb-12">
+        <div className="spotify-card-large mb-12">
           {!isSpotifyConnected ? (
-            <div className="flex items-center gap-6 flex-col sm:flex-row">
-              <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center">
-                <span className="text-3xl">🎵</span>
+            <div className="flex items-center gap-8 flex-col lg:flex-row">
+              <div className="w-20 h-20 bg-gradient-to-br from-[#1DB954] to-[#1ed760] rounded-full flex items-center justify-center shadow-lg">
+                <span className="text-4xl">🎵</span>
               </div>
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold mb-1">Connect to Spotify</h2>
-                <p className="text-gray-400 mb-4">Link your account to create playlists</p>
+              <div className="flex-1 text-center lg:text-left">
+                <h2 className="text-3xl font-bold mb-2 spotify-text-primary">Connect to Spotify</h2>
+                <p className="text-lg spotify-text-secondary mb-6">Link your account to create personalized playlists</p>
                 <SpotifyButton onClick={connectToSpotify}>
                   Connect Spotify Account
                 </SpotifyButton>
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-between flex-col sm:flex-row gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center">
-                  <span className="text-3xl">✓</span>
+            <div className="flex items-center justify-between flex-col lg:flex-row gap-6">
+              <div className="flex items-center gap-6">
+                <div className="w-20 h-20 bg-gradient-to-br from-[#1DB954] to-[#1ed760] rounded-full flex items-center justify-center shadow-lg">
+                  <span className="text-4xl">✓</span>
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold mb-1">Connected to Spotify</h2>
-                  <p className="text-gray-400">Ready to create playlists</p>
+                  <h2 className="text-3xl font-bold mb-2 spotify-text-primary">Connected to Spotify</h2>
+                  <p className="text-lg spotify-text-secondary">Ready to create amazing playlists</p>
                 </div>
               </div>
-              <SpotifyButton onClick={() => setShowChat(true)} className="flex items-center gap-2 bg-gray-800 text-white hover:bg-gray-700">
+              <SpotifyButton onClick={() => setShowChat(true)} className="spotify-button-secondary flex items-center gap-3">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
@@ -418,52 +418,87 @@ const HomePage = () => {
               </SpotifyButton>
             </div>
           )}
-        </SpotifySection>
+        </div>
 
         {/* Vibe Configuration */}
-        <div className="space-y-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
           <SpotifyCard>
-            <h3 className="text-lg font-semibold mb-4">📍 Location</h3>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                <span className="text-xl">📍</span>
+              </div>
+              <h3 className="text-xl font-bold spotify-text-primary">Location</h3>
+            </div>
             <LocationSelector onLocationChange={handleLocationChange} />
           </SpotifyCard>
+          
           <SpotifyCard>
-            <h3 className="text-lg font-semibold mb-4">🌤️ Weather</h3>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-lg flex items-center justify-center">
+                <span className="text-xl">🌤️</span>
+              </div>
+              <h3 className="text-xl font-bold spotify-text-primary">Weather</h3>
+            </div>
             <WeatherSelector 
               latitude={selectedLocation.lat} 
               longitude={selectedLocation.lng}
               onWeatherData={handleWeatherData}
             />
           </SpotifyCard>
+          
           <SpotifyCard>
-            <h3 className="text-lg font-semibold mb-4">🎭 Mood</h3>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                <span className="text-xl">🎭</span>
+              </div>
+              <h3 className="text-xl font-bold spotify-text-primary">Mood</h3>
+            </div>
             <MoodSelector onMoodChange={handleMoodChange} />
           </SpotifyCard>
+          
           <SpotifyCard>
-            <h3 className="text-lg font-semibold mb-4">🎬 Situation</h3>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-teal-500 rounded-lg flex items-center justify-center">
+                <span className="text-xl">🎬</span>
+              </div>
+              <h3 className="text-xl font-bold spotify-text-primary">Situation</h3>
+            </div>
             <SituationSelector onSituationChange={handleSituationChange} />
           </SpotifyCard>
         </div>
 
         {/* Create Playlist Button */}
-        <div className="mt-12 text-center">
-          <SpotifyButton
-            onClick={handleVibeCheck}
-            disabled={isLoadingPlaylist || !isSpotifyConnected || !selectedLocation.lat || !selectedLocation.lng || !selectedMood || !weatherData}
-            className="text-lg font-bold px-10 py-4"
-          >
-            {isLoadingPlaylist ? (
-              <div className="flex items-center gap-3">
-                <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                Creating Playlist...
+        <div className="text-center">
+          <div className="spotify-card-large mb-8">
+            <div className="flex items-center justify-center gap-4 mb-6">
+              <div className="w-16 h-16 bg-gradient-to-br from-[#1DB954] to-[#1ed760] rounded-full flex items-center justify-center shadow-lg">
+                <span className="text-3xl">🎵</span>
               </div>
-            ) : !isSpotifyConnected ? (
-              'Connect Spotify First'
-            ) : !selectedLocation.lat || !selectedLocation.lng || !selectedMood || !weatherData ? (
-              'Complete Your Vibe'
-            ) : (
-              'Create Spotify Playlist'
-            )}
-          </SpotifyButton>
+              <div>
+                <h2 className="text-2xl font-bold spotify-text-primary">Ready to Create Your Playlist?</h2>
+                <p className="spotify-text-secondary">Your perfect vibe is waiting</p>
+              </div>
+            </div>
+            
+            <SpotifyButton
+              onClick={handleVibeCheck}
+              disabled={isLoadingPlaylist || !isSpotifyConnected || !selectedLocation.lat || !selectedLocation.lng || !selectedMood || !weatherData}
+              className="text-xl font-bold px-12 py-5"
+            >
+              {isLoadingPlaylist ? (
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                  Creating Playlist...
+                </div>
+              ) : !isSpotifyConnected ? (
+                'Connect Spotify First'
+              ) : !selectedLocation.lat || !selectedLocation.lng || !selectedMood || !weatherData ? (
+                'Complete Your Vibe'
+              ) : (
+                'Create Spotify Playlist'
+              )}
+            </SpotifyButton>
+          </div>
 
           {/* Loading Animation with AnimatePresence */}
           <AnimatePresence mode="wait">
@@ -481,41 +516,43 @@ const HomePage = () => {
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.5 }}
               >
-                <SpotifyCard className="mt-8 bg-green-900/20 border-green-800">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
-                      <span className="text-2xl">✓</span>
+                <SpotifyCard className="mt-8 spotify-card-gradient border-[#1DB954]">
+                  <div className="flex items-center gap-6 mb-6">
+                    <div className="w-16 h-16 bg-gradient-to-br from-[#1DB954] to-[#1ed760] rounded-full flex items-center justify-center shadow-lg">
+                      <span className="text-3xl">✓</span>
                     </div>
                     <div>
-                      <h3 className="text-xl font-semibold">Playlist Created!</h3>
-                      <p className="text-gray-400">{spotifyPlaylistResult.playlistName}</p>
+                      <h3 className="text-2xl font-bold spotify-text-primary">Playlist Created!</h3>
+                      <p className="text-lg spotify-text-secondary">{spotifyPlaylistResult.playlistName}</p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-4 mb-6 text-sm">
-                    <div>
-                      <div className="text-gray-400">Total Songs</div>
-                      <div className="font-semibold">{spotifyPlaylistResult.totalSongs}</div>
+                  <div className="grid grid-cols-3 gap-6 mb-8">
+                    <div className="text-center">
+                      <div className="spotify-badge-secondary mb-2">Total Songs</div>
+                      <div className="text-2xl font-bold spotify-text-primary">{spotifyPlaylistResult.totalSongs}</div>
                     </div>
-                    <div>
-                      <div className="text-gray-400">Found on Spotify</div>
-                      <div className="font-semibold text-green-400">{spotifyPlaylistResult.foundSongs}</div>
+                    <div className="text-center">
+                      <div className="spotify-badge-secondary mb-2">Found on Spotify</div>
+                      <div className="text-2xl font-bold text-[#1DB954]">{spotifyPlaylistResult.foundSongs}</div>
                     </div>
                     {spotifyPlaylistResult.notFoundSongs > 0 && (
-                      <div>
-                        <div className="text-gray-400">Not Found</div>
-                        <div className="font-semibold text-yellow-400">{spotifyPlaylistResult.notFoundSongs}</div>
+                      <div className="text-center">
+                        <div className="spotify-badge-secondary mb-2">Not Found</div>
+                        <div className="text-2xl font-bold text-yellow-400">{spotifyPlaylistResult.notFoundSongs}</div>
                       </div>
                     )}
                   </div>
-                  <a
-                    href={spotifyPlaylistResult.playlistUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-green-500 hover:bg-green-600 text-black px-6 py-3 rounded-full font-semibold transition-colors inline-flex items-center gap-2"
-                  >
-                    <span>🎵</span>
-                    Open in Spotify
-                  </a>
+                  <div className="text-center">
+                    <a
+                      href={spotifyPlaylistResult.playlistUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="spotify-button inline-flex items-center gap-3"
+                    >
+                      <span>🎵</span>
+                      Open in Spotify
+                    </a>
+                  </div>
                 </SpotifyCard>
               </motion.div>
             )}
@@ -524,23 +561,48 @@ const HomePage = () => {
 
         {/* Error Messages */}
         {error && (
-          <SpotifyCard className="mt-8 bg-red-900/20 border-red-800">
-            <div className="flex items-center gap-3 text-red-400">
-              <span className="text-xl">⚠️</span>
-              <span className="font-medium">{error}</span>
+          <SpotifyCard className="mt-8 bg-red-900/20 border-red-500">
+            <div className="flex items-center gap-4 text-red-400">
+              <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center">
+                <span className="text-2xl">⚠️</span>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-red-400">Error</h3>
+                <p className="spotify-text-secondary">{error}</p>
+              </div>
             </div>
           </SpotifyCard>
         )}
         {spotifyError && (
-          <SpotifyCard className="mt-8 bg-red-900/20 border-red-800">
-            <div className="flex items-center gap-3 text-red-400">
-              <span className="text-xl">⚠️</span>
-              <span className="font-medium">{spotifyError}</span>
+          <SpotifyCard className="mt-8 bg-red-900/20 border-red-500">
+            <div className="flex items-center gap-4 text-red-400">
+              <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center">
+                <span className="text-2xl">⚠️</span>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-red-400">Spotify Error</h3>
+                <p className="spotify-text-secondary">{spotifyError}</p>
+              </div>
             </div>
           </SpotifyCard>
         )}
       </div>
       
+      {/* Floating Chat Button - Always visible when user is logged in */}
+      {user && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <button
+            onClick={() => setShowChat(true)}
+            className="bg-gradient-to-r from-[#1DB954] to-[#1ed760] hover:from-[#1ed760] hover:to-[#1DB954] text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-110"
+            title="Chat with Friends"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       {/* Keep the chat popup outside the main content */}
       {showChat && (
         <Chat

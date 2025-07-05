@@ -95,11 +95,8 @@ const WeatherAnimation = ({ weatherData }) => {
       const newClouds = []
       let cloudCount = 0
       
-      if (currentWeatherType.type === 'cloudy') {
-        // Create proper cloud formations - ensure minimum visibility
-        cloudCount = Math.max(Math.floor(5 * currentWeatherType.intensity) + 3, 6)
-        console.log('Creating cloudy weather clouds:', { intensity: currentWeatherType.intensity, count: cloudCount })
-      } else if (currentWeatherType.type === 'fog') {
+      // Remove clouds for cloudy weather - will show rain instead
+      if (currentWeatherType.type === 'fog') {
         cloudCount = 4
       } else if (currentWeatherType.type === 'thunderstorm') {
         cloudCount = 3
@@ -113,7 +110,7 @@ const WeatherAnimation = ({ weatherData }) => {
           left: Math.random() * containerWidth,
           top: Math.random() * (containerHeight * 0.3),
           size: Math.random() * 300 + 200,
-          opacity: currentWeatherType.type === 'cloudy' ? Math.random() * 0.3 + 0.5 : Math.random() * 0.4 + 0.3,
+          opacity: Math.random() * 0.4 + 0.3,
           animationDuration: Math.random() * 80 + 120,
           animationDelay: Math.random() * 40,
           cloudType: Math.random() > 0.5 ? 'cumulus' : 'stratus'
@@ -125,18 +122,26 @@ const WeatherAnimation = ({ weatherData }) => {
 
     const createRealisticRain = () => {
       const newRainDrops = []
-      // Only create rain for rain, drizzle, and thunderstorm weather types
-      if (currentWeatherType.type === 'rain' || currentWeatherType.type === 'drizzle' || currentWeatherType.type === 'thunderstorm') {
-        const dropCount = Math.floor(200 * currentWeatherType.intensity) + 50
+      // Create rain for rain, drizzle, thunderstorm, and cloudy weather types
+      if (currentWeatherType.type === 'rain' || currentWeatherType.type === 'drizzle' || currentWeatherType.type === 'thunderstorm' || currentWeatherType.type === 'cloudy') {
+        let dropCount = 0
+        
+        if (currentWeatherType.type === 'cloudy') {
+          // Lighter rain for cloudy weather
+          dropCount = Math.floor(100 * currentWeatherType.intensity) + 30
+        } else {
+          // Normal rain for other weather types
+          dropCount = Math.floor(200 * currentWeatherType.intensity) + 50
+        }
 
         for (let i = 0; i < dropCount; i++) {
           const drop = {
             id: i,
             left: Math.random() * containerWidth,
             top: -20,
-            length: Math.random() * 15 + 10,
-            speed: Math.random() * 2.5 + 2,
-            opacity: Math.random() * 0.4 + 0.3,
+            length: currentWeatherType.type === 'cloudy' ? Math.random() * 10 + 8 : Math.random() * 15 + 10,
+            speed: currentWeatherType.type === 'cloudy' ? Math.random() * 2 + 1.5 : Math.random() * 2.5 + 2,
+            opacity: currentWeatherType.type === 'cloudy' ? Math.random() * 0.3 + 0.2 : Math.random() * 0.4 + 0.3,
             windOffset: (Math.random() - 0.5) * windSpeed * 2,
             animationDelay: Math.random() * 3
           }
@@ -269,18 +274,7 @@ const WeatherAnimation = ({ weatherData }) => {
         <div className={`absolute inset-0 ${getAtmosphericOverlay()}`}></div>
       )}
       
-      {/* Additional cloudy atmosphere for overcast conditions */}
-      {currentWeatherType.type === 'cloudy' && (
-        <div className="absolute inset-0 bg-gradient-to-b from-gray-400/30 via-gray-300/25 to-gray-500/35"></div>
-      )}
-      
-      {/* Additional cloudy atmosphere layers */}
-      {currentWeatherType.type === 'cloudy' && (
-        <>
-          <div className="absolute inset-0 bg-gradient-to-r from-gray-300/10 via-transparent to-gray-400/15"></div>
-          <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-gray-200/15 to-transparent"></div>
-        </>
-      )}
+      {/* Cloudy weather now shows rain instead of cloud overlays */}
       
       {/* Realistic sun for clear weather */}
       {currentWeatherType.type === 'clear' && (

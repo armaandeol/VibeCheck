@@ -15,7 +15,6 @@ CREATE TABLE IF NOT EXISTS profiles (
     account_created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     top_artists TEXT[] DEFAULT '{}',
     top_songs TEXT[] DEFAULT '{}',
-    friends JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -47,14 +46,6 @@ BEGIN
         ALTER TABLE profiles ADD COLUMN top_songs TEXT[] DEFAULT '{}';
     END IF;
     
-    -- Add friends column if it doesn't exist
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'profiles' AND column_name = 'friends'
-    ) THEN
-        ALTER TABLE profiles ADD COLUMN friends JSONB DEFAULT '[]'::jsonb;
-    END IF;
-
     -- Add Spotify token columns if they don't exist
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
@@ -203,7 +194,13 @@ CREATE POLICY "Users can create chat rooms" ON chat_rooms
     FOR INSERT WITH CHECK (auth.uid()::text = created_by::text);
 
 CREATE POLICY "Users can update their chat rooms" ON chat_rooms
-    FOR UPDATE USING (auth.uid()::text = created_by::text);
+    FOR UPDATE USING (
+        EXISTS (
+            SELECT 1 FROM chat_participants 
+            WHERE chat_participants.chat_room_id = chat_rooms.id 
+            AND chat_participants.user_id::text = auth.uid()::text
+        )
+    );
 
 -- Chat participants policies
 DROP POLICY IF EXISTS "Users can view chat participants" ON chat_participants;
@@ -213,22 +210,32 @@ DROP POLICY IF EXISTS "Users can delete chat participants" ON chat_participants;
 
 -- Simplified policies to avoid infinite recursion
 CREATE POLICY "Users can view chat participants" ON chat_participants
-    FOR SELECT USING (user_id::text = auth.uid()::text);
-
-CREATE POLICY "Users can insert chat participants" ON chat_participants
-    FOR INSERT WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM chat_rooms 
-            WHERE chat_rooms.id = chat_participants.chat_room_id 
-            AND chat_rooms.created_by::text = auth.uid()::text
+    FOR SELECT USING (
+        user_id::text = auth.uid()::text
+        OR EXISTS (
+            SELECT 1 FROM chat_rooms
+            WHERE chat_rooms.id = chat_participants.chat_room_id
+            AND EXISTS (
+                SELECT 1 FROM chat_participants AS cp2
+                WHERE cp2.chat_room_id = chat_rooms.id
+                AND cp2.user_id::text = auth.uid()::text
+            )
         )
     );
 
-CREATE POLICY "Users can update chat participants" ON chat_participants
-    FOR UPDATE USING (user_id::text = auth.uid()::text);
-
-CREATE POLICY "Users can delete chat participants" ON chat_participants
-    FOR DELETE USING (user_id::text = auth.uid()::text);
+CREATE POLICY "Users can manage chat participants" ON chat_participants
+    FOR ALL USING (
+        user_id::text = auth.uid()::text
+        OR EXISTS (
+            SELECT 1 FROM chat_rooms
+            WHERE chat_rooms.id = chat_participants.chat_room_id
+            AND EXISTS (
+                SELECT 1 FROM chat_participants AS cp2
+                WHERE cp2.chat_room_id = chat_rooms.id
+                AND cp2.user_id::text = auth.uid()::text
+            )
+        )
+    );
 
 -- Chat messages policies
 CREATE POLICY "Users can view messages in their chats" ON chat_messages
@@ -242,7 +249,6 @@ CREATE POLICY "Users can view messages in their chats" ON chat_messages
 
 CREATE POLICY "Users can send messages in their chats" ON chat_messages
     FOR INSERT WITH CHECK (
-        auth.uid()::text = sender_id::text AND
         EXISTS (
             SELECT 1 FROM chat_participants 
             WHERE chat_participants.chat_room_id = chat_messages.chat_room_id 
@@ -251,7 +257,7 @@ CREATE POLICY "Users can send messages in their chats" ON chat_messages
     );
 
 CREATE POLICY "Users can update their own messages" ON chat_messages
-    FOR UPDATE USING (auth.uid()::text = sender_id::text);
+    FOR UPDATE USING (sender_id::text = auth.uid()::text);
 
 -- ========================================
 -- FUNCTIONS
