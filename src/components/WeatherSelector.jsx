@@ -6,7 +6,7 @@ const WeatherSelector = ({ latitude, longitude }) => {
   const [error, setError] = useState(null)
 
   // OpenWeatherMap API key - add this to your .env.local file
-  const API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY || 'your-api-key-here'
+  const API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY 
 
   const fetchWeather = async (lat, lon) => {
     if (!lat || !lon) return
@@ -65,10 +65,10 @@ const WeatherSelector = ({ latitude, longitude }) => {
 
   if (!latitude || !longitude) {
     return (
-      <div className="bg-white rounded-2xl p-8 shadow-lg">
+      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-gray-200">
         <div className="text-center">
           <div className="text-4xl mb-4">🌤️</div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-3">Weather Information</h3>
+          <h3 className="text-2xl font-bold text-gray-900 mb-3">Weather Information</h3>
           <p className="text-gray-600">
             Please select a location on the map to see weather information.
           </p>
@@ -78,13 +78,14 @@ const WeatherSelector = ({ latitude, longitude }) => {
   }
 
   return (
-    <div className="bg-white rounded-2xl p-8 shadow-lg">
+    <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-gray-200">
       <div className="text-center mb-6">
-        <div className="text-4xl mb-4">🌤️</div>
-        <h3 className="text-xl font-semibold text-gray-900 mb-3">Weather Information</h3>
-        <p className="text-gray-600 text-sm">
-          Current weather for Lat: {latitude.toFixed(4)}, Lon: {longitude.toFixed(4)}
-        </p>
+        <h3 className="text-2xl font-bold text-gray-900 mb-3">Weather Information</h3>
+        {weather && (
+          <p className="text-gray-600 text-sm">
+            Current weather for {weather.name}, {weather.sys.country}
+          </p>
+        )}
       </div>
 
       {loading && (
@@ -101,7 +102,7 @@ const WeatherSelector = ({ latitude, longitude }) => {
           <p className="text-gray-600 text-sm">{error}</p>
           <button
             onClick={() => fetchWeather(latitude, longitude)}
-            className="mt-4 bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700 transition-colors"
+            className="mt-4 bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700 transition-colors font-semibold shadow-lg"
           >
             🔄 Retry
           </button>
@@ -161,27 +162,6 @@ const WeatherSelector = ({ latitude, longitude }) => {
             </div>
           </div>
 
-          {/* Temperature range */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h5 className="font-semibold text-gray-800 mb-3 text-center">Temperature Range</h5>
-            <div className="flex justify-between items-center">
-              <div className="text-center">
-                <div className="text-xl mb-1">🌅</div>
-                <p className="text-sm text-gray-600">Min</p>
-                <p className="font-semibold text-blue-600">
-                  {formatTemperature(weather.main.temp_min)}°C
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="text-xl mb-1">🌇</div>
-                <p className="text-sm text-gray-600">Max</p>
-                <p className="font-semibold text-red-600">
-                  {formatTemperature(weather.main.temp_max)}°C
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* Additional info */}
           {weather.visibility && (
             <div className="text-center text-sm text-gray-600">
@@ -193,7 +173,7 @@ const WeatherSelector = ({ latitude, longitude }) => {
           <div className="text-center">
             <button
               onClick={() => fetchWeather(latitude, longitude)}
-              className="bg-purple-600 text-white px-6 py-2 rounded-lg text-sm hover:bg-purple-700 transition-colors"
+              className="bg-purple-600 text-white px-6 py-3 rounded-lg text-sm hover:bg-purple-700 transition-colors font-semibold shadow-lg"
             >
               🔄 Refresh Weather
             </button>

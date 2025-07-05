@@ -1,6 +1,10 @@
+@import 'leaflet/dist/leaflet.css';
+
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
@@ -338,4 +342,44 @@
 
 .search-input::placeholder {
   color: #94a3b8;
+}
+
+/* Leaflet map fixes */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  z-index: 1;
+}
+
+.leaflet-tile {
+  filter: none !important;
+}
+
+.leaflet-tile-container {
+  opacity: 1 !important;
+}
+
+/* Fix for white boxes/tiles in Leaflet */
+.leaflet-layer,
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out,
+.leaflet-control-attribution {
+  filter: none !important;
+}
+
+/* Ensure map tiles load properly */
+.leaflet-tile-pane {
+  opacity: 1 !important;
+}
+
+/* Fix marker icons */
+.leaflet-marker-icon {
+  filter: none !important;
+}
+
+/* Fix popup styling */
+.leaflet-popup-content-wrapper {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
