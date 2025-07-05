@@ -15,6 +15,8 @@ const AddFriends = ({ isOpen, onClose }) => {
 
   // Search for users by email
   const searchUsers = async (query) => {
+    console.log('searchUsers called with query:', query);
+    
     if (!query.trim() || query.length < 3) {
       setSearchResults([])
       return
@@ -29,17 +31,24 @@ const AddFriends = ({ isOpen, onClose }) => {
         .neq('id', user?.id)
         .limit(10)
 
+      console.log('searchUsers result:', { data, error });
+
       if (!error && data) {
         // Filter out users who are already friends or have pending requests
         const filteredResults = data.filter(profile => {
-          const isAlreadyFriend = pendingRequests.some(req => req.friend_id === profile.id)
-          const hasSentRequest = sentRequests.some(req => req.friend_id === profile.id)
+          const isAlreadyFriend = pendingRequests.some(req => req.user?.id === profile.id)
+          const hasSentRequest = sentRequests.some(req => req.friend?.id === profile.id)
           return !isAlreadyFriend && !hasSentRequest
         })
+        console.log('Filtered search results:', filteredResults);
         setSearchResults(filteredResults)
+      } else {
+        console.error('Search error:', error);
+        setSearchResults([])
       }
     } catch (err) {
       console.error('Error searching users:', err)
+      setSearchResults([])
     } finally {
       setLoading(false)
     }
@@ -131,6 +140,8 @@ const AddFriends = ({ isOpen, onClose }) => {
 
   // Fetch pending friend requests
   const fetchPendingRequests = async () => {
+    console.log('fetchPendingRequests called for user:', user?.id);
+    
     try {
       const { data, error } = await supabase
         .from('friends')
@@ -141,16 +152,24 @@ const AddFriends = ({ isOpen, onClose }) => {
         .eq('friend_id', user?.id)
         .eq('status', 'pending')
 
+      console.log('fetchPendingRequests result:', { data, error });
+
       if (!error && data) {
         setPendingRequests(data)
+      } else {
+        console.error('Error fetching pending requests:', error);
+        setPendingRequests([])
       }
     } catch (err) {
       console.error('Error fetching pending requests:', err)
+      setPendingRequests([])
     }
   }
 
   // Fetch sent friend requests
   const fetchSentRequests = async () => {
+    console.log('fetchSentRequests called for user:', user?.id);
+    
     try {
       const { data, error } = await supabase
         .from('friends')
@@ -161,11 +180,17 @@ const AddFriends = ({ isOpen, onClose }) => {
         .eq('user_id', user?.id)
         .eq('status', 'pending')
 
+      console.log('fetchSentRequests result:', { data, error });
+
       if (!error && data) {
         setSentRequests(data)
+      } else {
+        console.error('Error fetching sent requests:', error);
+        setSentRequests([])
       }
     } catch (err) {
       console.error('Error fetching sent requests:', err)
+      setSentRequests([])
     }
   }
 

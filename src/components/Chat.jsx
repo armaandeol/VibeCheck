@@ -43,9 +43,12 @@ const Chat = ({ selectedFriend: initialFriend, onClose }) => {
   // Fetch friends list
   useEffect(() => {
     const fetchFriends = async () => {
+      console.log('Chat fetchFriends called for user:', user?.id);
+      
       try {
         const { data, error } = await getFriends();
         console.log('Chat fetchFriends result:', { data, error });
+        
         if (!error && data) {
           // Transform the data to match the expected format
           const transformedFriends = data.map(friend => ({
@@ -65,8 +68,12 @@ const Chat = ({ selectedFriend: initialFriend, onClose }) => {
         setFriends([]);
       }
     };
+    
     if (user) {
       fetchFriends();
+    } else {
+      console.log('No user, clearing friends');
+      setFriends([]);
     }
   }, [user, getFriends]);
 
